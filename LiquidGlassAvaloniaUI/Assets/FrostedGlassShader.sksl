@@ -1,63 +1,65 @@
-// SKSL (Skia Shading Language) 着色器，用于实现毛玻璃效果
+// SKSL (Skia Shading Language) shader for a frosted glass effect
 
-// uniform: 从 C# 代码传递过来的变量
-uniform shader content;      // 控件背后的内容截图，作为输入纹理
-uniform float blurRadius;    // 模糊半径，值越大越模糊
-uniform vec2 resolution;     // 控件的尺寸（分辨率）
+// uniform: Variables passed from the C# code
+uniform shader content;      // The captured content behind the control, as an input texture
+uniform float blurRadius;    // The blur radius; a larger value means more blur
+uniform vec2 resolution;     // The size (resolution) of the control
 
-// 定义高斯权重。这些值是预先计算好的，用于创建平滑的模糊效果。
-const float weights[5] = float[](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
-
-// mainImage 是着色器的入口点，它接收像素坐标(fragCoord)并返回最终的颜色
+// main is the entry point for the shader. It receives pixel coordinates (fragCoord) and returns the final color.
 half4 main(vec2 fragCoord) {
-    // 如果模糊半径为0或负数，则不进行模糊，直接返回原始颜色
+    // If the blur radius is zero or negative, don't blur and return the original color directly.
     if (blurRadius <= 0.0) {
         return content.eval(fragCoord);
     }
 
-    // 计算每个像素的步长，用于在纹理上采样
+    // Define Gaussian weights. Initializing by element to ensure maximum compatibility.
+    float weights[5];
+    weights[0] = 0.227027;
+    weights[1] = 0.1945946;
+    weights[2] = 0.1216216;
+    weights[3] = 0.054054;
+    weights[4] = 0.016216;
+
+    // Calculate the step for one pixel, used for sampling the texture.
     vec2 texelStep = 1.0 / resolution;
 
-    // 初始化最终颜色为中心像素的颜色，并应用中心权重
+    // Initialize the final color with the center pixel's color, applying the center weight.
     half3 finalColor = content.eval(fragCoord).rgb * weights[0];
 
-    // --- 第一步：水平方向模糊 ---
-    // 通过循环，在中心像素的左右两侧进行采样
+    // --- Pass 1: Horizontal Blur ---
+    // Loop to sample pixels to the left and right of the center.
     for (int i = 1; i < 5; ++i) {
-        // 计算左右两侧采样点的坐标
+        // Calculate the coordinates for the left and right sample points.
         vec2 leftCoord = fragCoord - vec2(texelStep.x * float(i) * blurRadius, 0.0);
         vec2 rightCoord = fragCoord + vec2(texelStep.x * float(i) * blurRadius, 0.0);
 
-        // 读取采样点的颜色
+        // Read the colors from the sample points.
         half3 leftColor = content.eval(leftCoord).rgb;
         half3 rightColor = content.eval(rightCoord).rgb;
 
-        // 将采样点的颜色乘以对应的权重，并累加到最终颜色中
+        // Add the sampled colors, multiplied by their corresponding weights, to the final color.
         finalColor += leftColor * weights[i];
         finalColor += rightColor * weights[i];
     }
 
-    // --- 第二步：垂直方向模糊 ---
-    // 在第一步水平模糊结果的基础上，进行垂直方向的模糊
-    // 注意：这是一个简化的单通(single-pass)实现。
-    // 一个更精确的高斯模糊通常需要两个通道(two-pass)：
-    // 1. 将水平模糊的结果渲染到另一个纹理。
-    // 2. 对新纹理进行垂直模糊。
-    // 但对于实时毛玻璃效果，这种单通近似已经足够高效且效果不错。
+    // --- Pass 2: Vertical Blur ---
+    // Apply a vertical blur to the result of the horizontal blur.
+    // NOTE: This is a simplified single-pass implementation. A more accurate Gaussian blur
+    // usually requires two passes, but this approximation is efficient and looks good enough.
     for (int i = 1; i < 5; ++i) {
-        // 计算上下两侧采样点的坐标
+        // Calculate the coordinates for the up and down sample points.
         vec2 upCoord = fragCoord - vec2(0.0, texelStep.y * float(i) * blurRadius);
         vec2 downCoord = fragCoord + vec2(0.0, texelStep.y * float(i) * blurRadius);
 
-        // 读取采样点的颜色
+        // Read the colors from the sample points.
         half3 upColor = content.eval(upCoord).rgb;
         half3 downColor = content.eval(downCoord).rgb;
 
-        // 累加颜色
+        // Accumulate the colors.
         finalColor += upColor * weights[i];
         finalColor += downColor * weights[i];
     }
 
-    // 返回最终计算出的模糊颜色，alpha通道保持为1.0（完全不透明）
+    // Return the final calculated blur color, with alpha at 1.0 (fully opaque).
     return half4(finalColor, 1.0);
 }

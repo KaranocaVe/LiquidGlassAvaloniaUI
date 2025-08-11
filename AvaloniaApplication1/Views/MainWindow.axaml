@@ -1,0 +1,67 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:AvaloniaApplication1.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:liquidGlassAvaloniaUi="clr-namespace:LiquidGlassAvaloniaUI;assembly=LiquidGlassAvaloniaUI"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="AvaloniaApplication1.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="AvaloniaApplication1">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+
+    <Grid>
+
+        <!-- 1. 背景层：一张图片 -->
+        <!-- 请确保您在 Assets 文件夹中有一张名为 'background.jpg' 的图片 -->
+        <!-- 并且它的“生成操作”已设为“AvaloniaResource” -->
+        <Image Source="/Assets/Wallpaper.png" Stretch="UniformToFill" />
+
+        <!-- 2. 在液态玻璃下方的背景文字 -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20" IsHitTestVisible="False">
+            <TextBlock Text="你好，Avalonia!" FontSize="48" FontWeight="Bold" Foreground="White" />
+            <TextBlock Text="这是在液态玻璃效果下方的文本。" FontSize="24" Foreground="LightGray" />
+        </StackPanel>
+
+        <!-- 3. 液态玻璃效果层 -->
+        <!-- 这是一个独立的控件，只负责显示效果，没有子元素。 -->
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="450"
+                Height="250"
+                BoxShadow="0 0 30 5 #33000000"
+                CornerRadius="100"
+                ClipToBounds="True">
+            <liquidGlassAvaloniaUi:LiquidGlassControl Radius="{Binding #RadiusSlider.Value}" />
+        </Border>
+
+        <!-- 4. UI交互层 -->
+        <!-- 这是一个独立的 StackPanel，作为兄弟元素放置在效果层之上。 -->
+        <!-- 它的交互不会再导致渲染循环。 -->
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Spacing="15">
+            <TextBlock Text="动态扭曲控制"
+                       FontSize="28"
+                       FontWeight="SemiBold"
+                       Foreground="White"/>
+            <TextBlock Text="{Binding #RadiusSlider.Value, StringFormat='扭曲半径: {0:F1}'}"
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+
+            <Slider x:Name="RadiusSlider"
+                    Minimum="0"
+                    Maximum="50"
+                    Value="25"
+                    Width="300" />
+        </StackPanel>
+
+    </Grid>
+</Window>

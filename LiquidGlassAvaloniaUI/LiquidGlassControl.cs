@@ -1,19 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Rendering;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
-using Avalonia.VisualTree;
 using SkiaSharp;
 using System;
 using System.IO;
 
 namespace LiquidGlassAvaloniaUI
 {
-    // Note: This is now a Control, not a Decorator. It does not have children.
+    // 注意：这是一个控件（Control），而不是一个装饰器（Decorator）。它没有子元素。
     public class LiquidGlassControl : Control
     {
         #region Avalonia Properties
@@ -21,7 +18,7 @@ namespace LiquidGlassAvaloniaUI
         public static readonly StyledProperty<double> RadiusProperty =
             AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(Radius), 25.0);
 
-        // The Radius property controls the distortion effect.
+        // Radius 属性控制扭曲效果的强度。
         public double Radius
         {
             get => GetValue(RadiusProperty);
@@ -32,36 +29,39 @@ namespace LiquidGlassAvaloniaUI
 
         static LiquidGlassControl()
         {
-            // When Radius property changes, trigger a re-render.
+            // 当 Radius 属性变化时，触发重新渲染。
             AffectsRender<LiquidGlassControl>(RadiusProperty);
         }
 
         /// <summary>
-        /// Overrides the standard Render method to perform all drawing operations.
+        /// 重写标准的 Render 方法来执行所有的绘图操作。
         /// </summary>
         public override void Render(DrawingContext context)
         {
-            // Use the Custom method to insert our Skia drawing logic into the render pipeline.
-            context.Custom(new LiquidGlassDrawOperation(new Rect(0, 0, Bounds.Width, Bounds.Height), this));
+            // 使用 Custom 方法将我们的 Skia 绘图逻辑插入到渲染管线中。
+            // 关键改动：在这里直接传递 Radius 的值，而不是在渲染线程中访问它。
+            context.Custom(new LiquidGlassDrawOperation(new Rect(0, 0, Bounds.Width, Bounds.Height), Radius));
 
-            // We no longer call base.Render() because this control has no children.
+            // 因为这个控件没有子元素，所以我们不再调用 base.Render()。
         }
 
         /// <summary>
-        /// A custom draw operation that handles the Skia rendering.
+        /// 一个处理 Skia 渲染的自定义绘图操作。
         /// </summary>
         private class LiquidGlassDrawOperation : ICustomDrawOperation
         {
             private readonly Rect _bounds;
-            private readonly LiquidGlassControl _owner;
+            // 存储从 UI 线程传递过来的 Radius 值。
+            private readonly double _radius;
 
             private static SKRuntimeEffect? _effect;
             private static bool _isShaderLoaded;
 
-            public LiquidGlassDrawOperation(Rect bounds, LiquidGlassControl owner)
+            // 构造函数现在接收一个 double 类型的 radius。
+            public LiquidGlassDrawOperation(Rect bounds, double radius)
             {
                 _bounds = bounds;
-                _owner = owner;
+                _radius = radius;
             }
 
             public void Dispose() { }
@@ -77,6 +77,7 @@ namespace LiquidGlassAvaloniaUI
                 var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
                 if (leaseFeature is null) return;
 
+                // 确保着色器只被加载一次。
                 LoadShader();
 
                 using var lease = leaseFeature.Lease();
@@ -99,6 +100,8 @@ namespace LiquidGlassAvaloniaUI
 
                 try
                 {
+                    // 确保你的 .csproj 文件中包含了正确的 AvaloniaResource。
+                    // <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />
                     var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/LiquidGlassShader.sksl");
                     using var stream = AssetLoader.Open(assetUri);
                     using var reader = new StreamReader(stream);
@@ -107,12 +110,12 @@ namespace LiquidGlassAvaloniaUI
                     _effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
                     if (_effect == null)
                     {
-                        Console.WriteLine($"Failed to create SKRuntimeEffect: {errorText}");
+                        Console.WriteLine($"[SKIA ERROR] Failed to create SKRuntimeEffect: {errorText}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Exception while loading shader: {ex.Message}");
+                    Console.WriteLine($"[AVALONIA ERROR] Exception while loading shader: {ex.Message}");
                 }
             }
 
@@ -120,7 +123,7 @@ namespace LiquidGlassAvaloniaUI
             {
                 using var errorPaint = new SKPaint
                 {
-                    Color = new SKColor(255, 0, 0, 120), // Semi-transparent red
+                    Color = new SKColor(255, 0, 0, 120), // 半透明红色
                     Style = SKPaintStyle.Fill
                 };
                 canvas.DrawRect(SKRect.Create(0, 0, (float)_bounds.Width, (float)_bounds.Height), errorPaint);
@@ -139,6 +142,7 @@ namespace LiquidGlassAvaloniaUI
             {
                 if (_effect is null) return;
 
+                // 获取背景的快照
                 using var backgroundSnapshot = lease.SkSurface.Snapshot();
                 if (backgroundSnapshot is null) return;
 
@@ -150,7 +154,8 @@ namespace LiquidGlassAvaloniaUI
                 var pixelSize = new PixelSize((int)_bounds.Width, (int)_bounds.Height);
                 using var uniforms = new SKRuntimeEffectUniforms(_effect);
 
-                uniforms["radius"] = (float)_owner.Radius;
+                // 关键改动：使用从构造函数中存储的 _radius 值。
+                uniforms["radius"] = (float)_radius;
                 uniforms["resolution"] = new[] { (float)pixelSize.Width, (float)pixelSize.Height };
 
                 using var children = new SKRuntimeEffectChildren(_effect) { { "content", backdropShader } };

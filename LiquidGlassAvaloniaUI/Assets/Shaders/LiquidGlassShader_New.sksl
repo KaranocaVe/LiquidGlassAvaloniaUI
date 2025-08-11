@@ -1,0 +1,136 @@
+// Liquid Glass SKSL Shader - 基于旧版本的简化实现
+// 结合旧版本的位移逻辑和新的饱和度、色差效果
+
+// Uniform 变量定义
+uniform float2 resolution;              // 分辨率
+uniform float displacementScale;        // 位移缩放强度 
+uniform float blurAmount;              // 模糊量
+uniform float saturation;             // 饱和度 (0-2 范围，1为正常)
+uniform float aberrationIntensity;    // 色差强度
+uniform float cornerRadius;           // 圆角半径
+uniform float2 mouseOffset;          // 鼠标相对偏移 (百分比)
+uniform float2 globalMouse;          // 全局鼠标位置
+uniform float isHovered;             // 是否悬停 (0.0 或 1.0)
+uniform float isActive;              // 是否激活 (0.0 或 1.0)
+uniform float overLight;             // 是否在亮色背景上 (0.0 或 1.0)
+uniform float edgeMaskOffset;        // 边缘遮罩偏移
+uniform float3 chromaticAberrationScales; // 色差缩放系数 [R, G, B]
+uniform float hasDisplacementMap;    // 是否有位移贴图 (0.0 或 1.0)
+
+// 着色器输入
+uniform shader backgroundTexture;     // 背景纹理
+uniform shader displacementTexture;   // 位移贴图纹理
+
+// 有符号距离场 - 圆角矩形 (来自旧版本)
+float roundedRectSDF(float2 p, float2 b, float r) {
+    float2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+// 饱和度调整函数
+half4 adjustSaturation(half4 color, half saturationLevel) {
+    // RGB to grayscale weights (Rec. 709)
+    half3 gray = half3(0.299, 0.587, 0.114);
+    half luminance = dot(color.rgb, gray);
+    return half4(mix(half3(luminance), color.rgb, saturationLevel), color.a);
+}
+
+// 基础液态玻璃变形 (基于旧版本逻辑)
+float2 applyLiquidGlassDistortion(float2 uv) {
+    // 将坐标中心化，使 (0,0) 位于控件中心
+    float2 centeredUV = uv - 0.5;
+
+    // 扭曲矩形的半尺寸
+    float2 rectHalfSize = float2(0.3, 0.2);
+
+    // 扭曲形状的圆角半径
+    float cornerRadiusNormalized = 0.6;
+
+    // 计算当前像素到圆角矩形边缘的距离
+    float distanceToEdge = roundedRectSDF(centeredUV, rectHalfSize, cornerRadiusNormalized);
+
+    // 使用 smoothstep 基于距离创建位移因子
+    // displacementScale uniform 控制扭曲强度
+    float displacement = smoothstep(0.8, 0.0, distanceToEdge - (displacementScale / 1000.0));
+    float scaled = smoothstep(0.0, 1.0, displacement);
+
+    // 通过应用位移计算新的扭曲纹理坐标
+    float2 distortedUV = centeredUV * scaled;
+
+    // 将坐标移回 [0, 1] 范围进行采样
+    return distortedUV + 0.5;
+}
+
+// 色差效果 (简化版本)
+half4 applyChromaticAberration(float2 uv) {
+    if (aberrationIntensity < 0.1) {
+        // 没有色差效果，直接采样
+        float2 distortedUV = applyLiquidGlassDistortion(uv);
+        return backgroundTexture.eval(distortedUV * resolution);
+    }
+
+    // 计算色差偏移
+    float aberrationOffset = aberrationIntensity * 0.001;
+    
+    // 为每个颜色通道应用不同的位移
+    float2 redUV = applyLiquidGlassDistortion(uv + float2(aberrationOffset * chromaticAberrationScales.r, 0.0));
+    float2 greenUV = applyLiquidGlassDistortion(uv + float2(aberrationOffset * chromaticAberrationScales.g, 0.0));
+    float2 blueUV = applyLiquidGlassDistortion(uv + float2(aberrationOffset * chromaticAberrationScales.b, 0.0));
+
+    // 采样各个颜色通道
+    half4 redSample = backgroundTexture.eval(redUV * resolution);
+    half4 greenSample = backgroundTexture.eval(greenUV * resolution);
+    half4 blueSample = backgroundTexture.eval(blueUV * resolution);
+
+    // 组合颜色通道
+    return half4(redSample.r, greenSample.g, blueSample.b, redSample.a);
+}
+
+// 交互效果 (悬停和激活状态)
+half4 applyInteractionEffects(half2 uv, half4 baseColor) {
+    if (isHovered > 0.5) {
+        // 悬停效果 - 径向渐变从顶部
+        half2 hoverCenter = half2(0.5, 0.0);
+        half hoverDist = length(uv - hoverCenter);
+        half hoverMask = smoothstep(0.5, 0.0, hoverDist);
+
+        half3 hoverColor = half3(1.0, 1.0, 1.0) * 0.3 * hoverMask;
+        baseColor.rgb = baseColor.rgb + hoverColor * 0.5;
+    }
+
+    if (isActive > 0.5) {
+        // 激活效果 - 更强的径向渐变
+        half2 activeCenter = half2(0.5, 0.0);
+        half activeDist = length(uv - activeCenter);
+        half activeMask = smoothstep(1.0, 0.0, activeDist);
+
+        half3 activeColor = half3(1.0, 1.0, 1.0) * 0.6 * activeMask;
+        baseColor.rgb = baseColor.rgb + activeColor * 0.7;
+    }
+
+    return baseColor;
+}
+
+// 主着色器函数 - 简化版本
+half4 main(float2 coord) {
+    half2 uv = coord / resolution;
+
+    // 应用色差效果（同时包含液态玻璃变形）
+    half4 color = applyChromaticAberration(uv);
+
+    // 应用饱和度调整
+    color = adjustSaturation(color, saturation);
+
+    // 根据overLight状态调整颜色
+    if (overLight > 0.5) {
+        color.rgb *= 0.7; // 在亮色背景上减弱效果
+    }
+
+    // 应用交互效果
+    color = applyInteractionEffects(uv, color);
+
+    // 确保alpha通道正确
+    color.a = 1.0;
+
+    return color;
+}

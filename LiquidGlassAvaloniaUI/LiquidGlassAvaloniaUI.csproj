@@ -2,7 +2,8 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <LangVersion>8</LangVersion>
+        <LangVersion>9</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,10 +13,22 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="Assets\FrostedGlassShader.sksl" />
-      <AvaloniaResource Include="Assets\FrostedGlassShader.sksl" />
-      <None Remove="Assets\LiquidGlassShader.sksl" />
-      <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />
+<!--      <None Remove="Assets\FrostedGlassShader.sksl" />-->
+<!--      <AvaloniaResource Include="Assets\FrostedGlassShader.sksl" />-->
+<!--      <None Remove="Assets\LiquidGlassShader.sksl" />-->
+<!--      <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />-->
+      <None Remove="Assets\Shaders\LiquidGlassShader.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassShader.sksl" />
+      <None Remove="Assets\DisplacementMaps\displacementMap.jpeg" />
+      <AvaloniaResource Include="Assets\DisplacementMaps\standard_displacement.jpeg" />
+      <None Remove="Assets\DisplacementMaps\polarDisplacementMap.jpeg" />
+      <AvaloniaResource Include="Assets\DisplacementMaps\polar_displacement.jpeg" />
+      <None Remove="Assets\DisplacementMaps\prominentDisplacementMap.jpeg" />
+      <AvaloniaResource Include="Assets\DisplacementMaps\prominent_displacement.jpeg" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Assets\DisplacementMaps\" />
     </ItemGroup>
 
 </Project>

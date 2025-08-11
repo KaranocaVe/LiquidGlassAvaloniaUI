@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI", "LiquidGlassAvaloniaUI\LiquidGlassAvaloniaUI.csproj", "{40CA52C8-5B8F-42D0-A980-8E8A686BD0C4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaApplication1", "AvaloniaApplication1\AvaloniaApplication1.csproj", "{E73ABFB5-A255-4632-81F6-5AF65AE33744}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Demo", "LiquidGlassAvaloniaUI.Demo\LiquidGlassAvaloniaUI.Demo.csproj", "{E73ABFB5-A255-4632-81F6-5AF65AE33744}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -13,13 +13,15 @@ using System.IO;
 
 namespace LiquidGlassAvaloniaUI
 {
-    public class FrostedGlassDecorator : Decorator
+    // Note: This is now a Control, not a Decorator. It does not have children.
+    public class LiquidGlassControl : Control
     {
         #region Avalonia Properties
 
         public static readonly StyledProperty<double> RadiusProperty =
-            AvaloniaProperty.Register<FrostedGlassDecorator, double>(nameof(Radius), 5.0);
+            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(Radius), 25.0);
 
+        // The Radius property controls the distortion effect.
         public double Radius
         {
             get => GetValue(RadiusProperty);
@@ -28,10 +30,10 @@ namespace LiquidGlassAvaloniaUI
 
         #endregion
 
-        static FrostedGlassDecorator()
+        static LiquidGlassControl()
         {
             // When Radius property changes, trigger a re-render.
-            AffectsRender<FrostedGlassDecorator>(RadiusProperty);
+            AffectsRender<LiquidGlassControl>(RadiusProperty);
         }
 
         /// <summary>
@@ -39,31 +41,24 @@ namespace LiquidGlassAvaloniaUI
         /// </summary>
         public override void Render(DrawingContext context)
         {
-            // --- THE FINAL FIX ---
-            // 1. First, call base.Render(context) to let Avalonia draw all child controls.
-            //    This completes the standard rendering pass.
-            base.Render(context);
+            // Use the Custom method to insert our Skia drawing logic into the render pipeline.
+            context.Custom(new LiquidGlassDrawOperation(new Rect(0, 0, Bounds.Width, Bounds.Height), this));
 
-            // 2. AFTER the children have been drawn, insert our custom blur operation.
-            //    This draws our effect on top of the already rendered children,
-            //    but the effect itself samples the original background, creating the illusion
-            //    that the children are on top of the glass. This breaks the render loop.
-            context.Custom(new FrostedGlassDrawOperation(new Rect(0, 0, Bounds.Width, Bounds.Height), this));
+            // We no longer call base.Render() because this control has no children.
         }
 
         /// <summary>
         /// A custom draw operation that handles the Skia rendering.
         /// </summary>
-        private class FrostedGlassDrawOperation : ICustomDrawOperation
+        private class LiquidGlassDrawOperation : ICustomDrawOperation
         {
             private readonly Rect _bounds;
-            private readonly FrostedGlassDecorator _owner;
+            private readonly LiquidGlassControl _owner;
 
-            // Shader and loaded status are now part of the operation
             private static SKRuntimeEffect? _effect;
             private static bool _isShaderLoaded;
 
-            public FrostedGlassDrawOperation(Rect bounds, FrostedGlassDecorator owner)
+            public LiquidGlassDrawOperation(Rect bounds, LiquidGlassControl owner)
             {
                 _bounds = bounds;
                 _owner = owner;
@@ -93,8 +88,7 @@ namespace LiquidGlassAvaloniaUI
                 }
                 else
                 {
-                    // Pass the lease to the effect drawing method
-                    DrawFrostedGlassEffect(canvas, lease);
+                    DrawLiquidGlassEffect(canvas, lease);
                 }
             }
 
@@ -105,7 +99,7 @@ namespace LiquidGlassAvaloniaUI
 
                 try
                 {
-                    var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/FrostedGlassShader.sksl");
+                    var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/LiquidGlassShader.sksl");
                     using var stream = AssetLoader.Open(assetUri);
                     using var reader = new StreamReader(stream);
                     var shaderCode = reader.ReadToEnd();
@@ -141,34 +135,27 @@ namespace LiquidGlassAvaloniaUI
                 canvas.DrawText("Shader Failed to Load!", (float)_bounds.Width / 2, (float)_bounds.Height / 2, textPaint);
             }
 
-            private void DrawFrostedGlassEffect(SKCanvas canvas, ISkiaSharpApiLease lease)
+            private void DrawLiquidGlassEffect(SKCanvas canvas, ISkiaSharpApiLease lease)
             {
                 if (_effect is null) return;
 
-                // 1. Take a snapshot of the current drawing surface. This captures everything drawn so far.
                 using var backgroundSnapshot = lease.SkSurface.Snapshot();
                 if (backgroundSnapshot is null) return;
 
-                // 2. Get the inverted transform of the canvas. This is crucial to map the fullscreen
-                //    snapshot correctly onto our local control's coordinate space.
                 if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
                     return;
 
-                // 3. Create a shader from the background snapshot, applying the inverted transform.
-                //    This shader will now correctly sample the pixels that are directly behind our control.
                 using var backdropShader = SKShader.CreateImage(backgroundSnapshot, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, currentInvertedTransform);
 
-                // 4. Prepare the uniforms for our SKSL blur shader.
                 var pixelSize = new PixelSize((int)_bounds.Width, (int)_bounds.Height);
                 using var uniforms = new SKRuntimeEffectUniforms(_effect);
-                uniforms["blurRadius"] = (float)_owner.Radius;
+
+                uniforms["radius"] = (float)_owner.Radius;
                 uniforms["resolution"] = new[] { (float)pixelSize.Width, (float)pixelSize.Height };
 
-                // 5. Create the final shader by providing our backdrop shader as the 'content' input to our SKSL effect.
                 using var children = new SKRuntimeEffectChildren(_effect) { { "content", backdropShader } };
                 using var finalShader = _effect.ToShader(uniforms, children);
 
-                // 6. Create a paint with the final shader and draw it.
                 using var paint = new SKPaint { Shader = finalShader };
                 canvas.DrawRect(SKRect.Create(0, 0, (float)_bounds.Width, (float)_bounds.Height), paint);
             }

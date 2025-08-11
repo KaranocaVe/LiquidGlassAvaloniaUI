@@ -11,4 +11,11 @@
       <PackageReference Include="SkiaSharp" Version="3.119.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="Assets\FrostedGlassShader.sksl" />
+      <AvaloniaResource Include="Assets\FrostedGlassShader.sksl" />
+      <None Remove="Assets\LiquidGlassShader.sksl" />
+      <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />
+    </ItemGroup>
+
 </Project>

@@ -1,0 +1,181 @@
+// Liquid Glass SKSL Shader - 修正版本
+// 正确分离 Displacement Scale 和 Chromatic Aberration 效果
+
+// Uniform 变量定义
+uniform float2 resolution;              // 分辨率
+uniform float displacementScale;        // 位移缩放强度 (用于位移贴图)
+uniform float blurAmount;              // 模糊量
+uniform float saturation;             // 饱和度 (0-2 范围，1为正常)
+uniform float aberrationIntensity;    // 色差强度 (用于聚焦扭曲)
+uniform float cornerRadius;           // 圆角半径
+uniform float2 mouseOffset;          // 鼠标相对偏移 (百分比)
+uniform float2 globalMouse;          // 全局鼠标位置
+uniform float isHovered;             // 是否悬停 (0.0 或 1.0)
+uniform float isActive;              // 是否激活 (0.0 或 1.0)
+uniform float overLight;             // 是否在亮色背景上 (0.0 或 1.0)
+uniform float edgeMaskOffset;        // 边缘遮罩偏移
+uniform float3 chromaticAberrationScales; // 色差缩放系数 [R, G, B]
+uniform float hasDisplacementMap;    // 是否有位移贴图 (0.0 或 1.0)
+
+// 着色器输入
+uniform shader backgroundTexture;     // 背景纹理
+uniform shader displacementTexture;   // 位移贴图纹理
+
+// 有符号距离场 - 圆角矩形
+float roundedRectSDF(float2 p, float2 b, float r) {
+    float2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
+}
+
+// 饱和度调整函数
+half4 adjustSaturation(half4 color, half saturationLevel) {
+    // RGB to grayscale weights (Rec. 709)
+    half3 gray = half3(0.299, 0.587, 0.114);
+    half luminance = dot(color.rgb, gray);
+    return half4(mix(half3(luminance), color.rgb, saturationLevel), color.a);
+}
+
+// 位移贴图应用函数 (Displacement Scale效果)
+float2 applyDisplacementMap(float2 uv) {
+    // 如果有位移贴图，使用位移贴图数据来控制边缘色散
+    if (hasDisplacementMap > 0.5) {
+        // 从位移贴图采样
+        half4 displacementSample = displacementTexture.eval(uv * resolution);
+        
+        // 将RGB值从[0,1]范围转换为[-1,1]范围的位移向量
+        // 注意：0.5表示无位移，<0.5向负方向，>0.5向正方向
+        float2 displacement = float2(
+            (displacementSample.r - 0.5) * 2.0,
+            (displacementSample.g - 0.5) * 2.0
+        );
+        
+        // 应用位移缩放 - 使用displacementScale参数
+        float displacementStrength = displacementScale / 1000.0;
+        displacement *= displacementStrength;
+        
+        // 限制位移范围以防止过度扭曲
+        displacement = clamp(displacement, float2(-0.2, -0.2), float2(0.2, 0.2));
+        
+        // 将位移应用到原始UV坐标
+        float2 distortedUV = uv + displacement;
+        
+        // 确保结果在有效范围内
+        return clamp(distortedUV, float2(0.0, 0.0), float2(1.0, 1.0));
+    }
+    else {
+        // 没有位移贴图时直接返回原始UV
+        return uv;
+    }
+}
+
+// 色差聚焦扭曲效果 (Chromatic Aberration效果)
+float2 applyChromaticAberrationDistortion(float2 uv, float intensityMultiplier) {
+    // 将坐标中心化，使 (0,0) 位于控件中心
+    float2 centeredUV = uv - 0.5;
+    
+    // 扭曲矩形的半尺寸 - 根据TypeScript版本调整
+    float2 rectHalfSize = float2(0.3, 0.2);
+    float cornerRadiusNormalized = 0.6;
+
+    // 计算当前像素到圆角矩形边缘的距离
+    float distanceToEdge = roundedRectSDF(centeredUV, rectHalfSize, cornerRadiusNormalized);
+
+    // 使用色差强度来控制扭曲程度
+    float aberrationOffset = (aberrationIntensity * intensityMultiplier) / 100.0;
+    
+    // 计算聚焦效果
+    float displacement = smoothstep(0.8, 0.0, distanceToEdge - aberrationOffset);
+    float scaled = smoothstep(0.0, 1.0, displacement);
+
+    // 应用聚焦变换
+    float2 distortedUV = centeredUV * scaled + 0.5;
+    
+    return distortedUV;
+}
+
+// 主色差效果函数
+half4 applyChromaticAberration(float2 uv) {
+    if (aberrationIntensity < 0.001) {
+        // 没有色差效果，只应用位移贴图
+        float2 distortedUV = applyDisplacementMap(uv);
+        return backgroundTexture.eval(distortedUV * resolution);
+    }
+
+    // 为不同颜色通道计算不同的聚焦强度
+    float2 redUV = applyChromaticAberrationDistortion(uv, 1.2);     // 红色最强聚焦
+    float2 greenUV = applyChromaticAberrationDistortion(uv, 1.0);   // 绿色标准聚焦
+    float2 blueUV = applyChromaticAberrationDistortion(uv, 0.8);    // 蓝色最弱聚焦
+    
+    // 对每个颜色通道应用位移贴图
+    redUV = applyDisplacementMap(redUV);
+    greenUV = applyDisplacementMap(greenUV);
+    blueUV = applyDisplacementMap(blueUV);
+
+    // 采样各个颜色通道
+    half4 redSample = backgroundTexture.eval(redUV * resolution);
+    half4 greenSample = backgroundTexture.eval(greenUV * resolution);
+    half4 blueSample = backgroundTexture.eval(blueUV * resolution);
+
+    // 组合颜色通道，使用绿色通道的alpha作为基准
+    return half4(redSample.r, greenSample.g, blueSample.b, greenSample.a);
+}
+
+// 交互效果 (悬停和激活状态)
+half4 applyInteractionEffects(half2 uv, half4 baseColor) {
+    if (isHovered > 0.5) {
+        // 悬停效果 - 径向渐变从顶部
+        half2 hoverCenter = half2(0.5, 0.0);
+        half hoverDist = length(uv - hoverCenter);
+        half hoverMask = smoothstep(0.5, 0.0, hoverDist);
+
+        half3 hoverColor = half3(1.0, 1.0, 1.0) * 0.3 * hoverMask;
+        baseColor.rgb = baseColor.rgb + hoverColor * 0.5;
+    }
+
+    if (isActive > 0.5) {
+        // 激活效果 - 更强的径向渐变
+        half2 activeCenter = half2(0.5, 0.0);
+        half activeDist = length(uv - activeCenter);
+        half activeMask = smoothstep(1.0, 0.0, activeDist);
+
+        half3 activeColor = half3(1.0, 1.0, 1.0) * 0.6 * activeMask;
+        baseColor.rgb = baseColor.rgb + activeColor * 0.7;
+    }
+
+    return baseColor;
+}
+
+// 主着色器函数
+half4 main(float2 coord) {
+    half2 uv = coord / resolution;
+
+    // 应用色差效果（包含聚焦扭曲和位移贴图）
+    half4 color = applyChromaticAberration(uv);
+
+    // 应用饱和度调整
+    color = adjustSaturation(color, saturation);
+
+    // 根据overLight状态调整颜色
+    if (overLight > 0.5) {
+        color.rgb *= 0.7; // 在亮色背景上减弱效果
+    }
+
+    // 应用交互效果
+    color = applyInteractionEffects(uv, color);
+
+    // 创建边界遮罩 - 基于距离中心的简单渐变
+    float2 centeredUV = uv - 0.5;
+    float distanceFromCenter = length(centeredUV);
+    
+    // 创建平滑的径向遮罩，在边缘处渐变到透明
+    float edgeMask = 1.0 - smoothstep(0.45, 0.5, distanceFromCenter);
+    
+    // 同时创建矩形遮罩来防止四角的液态玻璃效果
+    float2 rectMask = step(abs(centeredUV), float2(0.48, 0.48));
+    float combinedMask = edgeMask * rectMask.x * rectMask.y;
+    
+    // 应用组合遮罩
+    color.a = color.a * combinedMask;
+
+    return color;
+}

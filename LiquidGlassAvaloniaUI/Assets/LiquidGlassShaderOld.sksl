@@ -1,9 +1,8 @@
-// SKSL shader for a "liquid glass" distortion effect.
-// Faithfully adapted from the JavaScript logic you provided.
-
+// SKSL shader for a "liquid glass" distortion effect using a Signed Distance Function.
+// 使用有符号距离场（SDF）实现的“液态玻璃”扭曲效果着色器。
 uniform shader content;
-uniform float radius;    // Controls the shape and intensity of the distortion. Mapped from 0-50 in C#.
-uniform vec2 resolution;
+uniform float radius;    // Controls the intensity of the distortion. Mapped from C#.
+uniform float2 resolution; // Note: Use float2 for Skia, not vec2.
 
 /**
  * Calculates the signed distance from a point to a rounded rectangle.
@@ -12,8 +11,8 @@ uniform vec2 resolution;
  * @param r The corner radius.
  * @return The signed distance.
  */
-float roundedRectSDF(vec2 p, vec2 b, float r) {
-    vec2 q = abs(p) - b + r;
+float roundedRectSDF(float2 p, float2 b, float r) {
+    float2 q = abs(p) - b + r;
     return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
@@ -21,18 +20,17 @@ float roundedRectSDF(vec2 p, vec2 b, float r) {
  * The main entry point for the shader.
  * It receives pixel coordinates (fragCoord) and returns the final color.
  */
-half4 main(vec2 fragCoord) {
+half4 main(float2 fragCoord) {
     // Normalize coordinates to the [0, 1] range.
-    vec2 uv = fragCoord / resolution;
+    float2 uv = fragCoord / resolution;
 
     // Center the coordinates so (0,0) is the middle of the control.
-    vec2 centeredUV = uv - 0.5;
+    float2 centeredUV = uv - 0.5;
 
     // --- Liquid Glass Logic ---
-    // The parameters below are taken directly from your JavaScript example.
 
     // The half-dimensions of the distortion rectangle.
-    vec2 rectHalfSize = vec2(0.3, 0.2);
+    float2 rectHalfSize = float2(0.3, 0.2);
 
     // The corner radius of the distortion shape.
     float cornerRadius = 0.6;
@@ -41,15 +39,18 @@ half4 main(vec2 fragCoord) {
     float distanceToEdge = roundedRectSDF(centeredUV, rectHalfSize, cornerRadius);
 
     // Use smoothstep to create a displacement factor based on the distance.
-    // This creates the "lens" effect.
-    float displacement = smoothstep(0.8, 0.0, distanceToEdge - 0.15);
+    // The 'radius' uniform now controls the offset, thus controlling the distortion strength.
+    // We scale radius down because it comes from a slider (e.g., 0-50) and we need a small value here.
+    // “radius” uniform 现在控制着偏移量，从而控制扭曲强度。
+    // 我们需要将 radius 缩小，因为它通常来自一个范围较大的滑块（例如 0-50），而这里需要一个较小的值。
+    float displacement = smoothstep(0.8, 0.0, distanceToEdge - (radius / 200.0));
     float scaled = smoothstep(0.0, 1.0, displacement);
 
     // Calculate the new, distorted texture coordinates by applying the displacement.
-    vec2 distortedUV = centeredUV * scaled;
+    float2 distortedUV = centeredUV * scaled;
 
     // Shift the coordinates back to the [0, 1] range for sampling.
-    vec2 newUV = distortedUV + 0.5;
+    float2 newUV = distortedUV + 0.5;
 
     // Sample the original content texture at the new, distorted coordinates.
     return content.eval(newUV * resolution);

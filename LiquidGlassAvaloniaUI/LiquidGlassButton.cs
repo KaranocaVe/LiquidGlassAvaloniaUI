@@ -1,123 +1,106 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Platform;
-using Avalonia.Rendering.SceneGraph;
-using Avalonia.Skia;
-using SkiaSharp;
 using System;
-using System.IO;
-using System.Numerics;
 
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
-    /// 液态玻璃效果模式枚举
+    /// 液态玻璃按钮控件 - 完整的鼠标交互响应
     /// </summary>
-    public enum LiquidGlassMode
-    {
-        Standard,   // 标准径向位移模式
-        Polar,      // 极坐标位移模式
-        Prominent,  // 突出边缘位移模式
-        Shader      // 实时生成的 Shader 位移模式
-    }
-
-    /// <summary>
-    /// 液态玻璃控件 - 完全复刻 TypeScript 版本功能
-    /// </summary>
-    public class LiquidGlassControl : Control
+    public class LiquidGlassButton : Control
     {
         #region Avalonia Properties
 
         /// <summary>
-        /// 位移缩放强度 (对应 TS 版本的 displacementScale)
+        /// 位移缩放强度
         /// </summary>
         public static readonly StyledProperty<double> DisplacementScaleProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(DisplacementScale), 70.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(DisplacementScale), 20.0);
 
         /// <summary>
-        /// 模糊量 (对应 TS 版本的 blurAmount)
+        /// 模糊量
         /// </summary>
         public static readonly StyledProperty<double> BlurAmountProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(BlurAmount), 0.0625);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(BlurAmount), 0.15);
 
         /// <summary>
-        /// 饱和度 (对应 TS 版本的 saturation)
+        /// 饱和度
         /// </summary>
         public static readonly StyledProperty<double> SaturationProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(Saturation), 140.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(Saturation), 120.0);
 
         /// <summary>
-        /// 色差强度 (对应 TS 版本的 aberrationIntensity)
+        /// 色差强度
         /// </summary>
         public static readonly StyledProperty<double> AberrationIntensityProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(AberrationIntensity), 2.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(AberrationIntensity), 7.0);
 
         /// <summary>
-        /// 弹性系数 (对应 TS 版本的 elasticity)
+        /// 弹性系数
         /// </summary>
         public static readonly StyledProperty<double> ElasticityProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(Elasticity), 0.15);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(Elasticity), 0.15);
 
         /// <summary>
-        /// 圆角半径 (对应 TS 版本的 cornerRadius)
+        /// 圆角半径
         /// </summary>
         public static readonly StyledProperty<double> CornerRadiusProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(CornerRadius), 999.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(CornerRadius), 999.0);
 
         /// <summary>
         /// 液态玻璃效果模式
         /// </summary>
         public static readonly StyledProperty<LiquidGlassMode> ModeProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, LiquidGlassMode>(nameof(Mode), LiquidGlassMode.Standard);
+            AvaloniaProperty.Register<LiquidGlassButton, LiquidGlassMode>(nameof(Mode), LiquidGlassMode.Standard);
 
         /// <summary>
         /// 是否处于悬停状态
         /// </summary>
         public static readonly StyledProperty<bool> IsHoveredProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, bool>(nameof(IsHovered), false);
+            AvaloniaProperty.Register<LiquidGlassButton, bool>(nameof(IsHovered), false);
 
         /// <summary>
         /// 是否处于激活状态
         /// </summary>
         public static readonly StyledProperty<bool> IsActiveProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, bool>(nameof(IsActive), false);
+            AvaloniaProperty.Register<LiquidGlassButton, bool>(nameof(IsActive), false);
 
         /// <summary>
         /// 是否在亮色背景上
         /// </summary>
         public static readonly StyledProperty<bool> OverLightProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, bool>(nameof(OverLight), false);
+            AvaloniaProperty.Register<LiquidGlassButton, bool>(nameof(OverLight), false);
 
         /// <summary>
         /// 鼠标相对偏移 X (百分比)
         /// </summary>
         public static readonly StyledProperty<double> MouseOffsetXProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(MouseOffsetX), 0.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(MouseOffsetX), 0.0);
 
         /// <summary>
         /// 鼠标相对偏移 Y (百分比)
         /// </summary>
         public static readonly StyledProperty<double> MouseOffsetYProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(MouseOffsetY), 0.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(MouseOffsetY), 0.0);
 
         /// <summary>
         /// 全局鼠标位置 X
         /// </summary>
         public static readonly StyledProperty<double> GlobalMouseXProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(GlobalMouseX), 0.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(GlobalMouseX), 0.0);
 
         /// <summary>
         /// 全局鼠标位置 Y
         /// </summary>
         public static readonly StyledProperty<double> GlobalMouseYProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(GlobalMouseY), 0.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(GlobalMouseY), 0.0);
 
         /// <summary>
         /// 激活区域距离 (像素)
         /// </summary>
         public static readonly StyledProperty<double> ActivationZoneProperty =
-            AvaloniaProperty.Register<LiquidGlassControl, double>(nameof(ActivationZone), 200.0);
+            AvaloniaProperty.Register<LiquidGlassButton, double>(nameof(ActivationZone), 200.0);
 
         #endregion
 
@@ -215,10 +198,10 @@ namespace LiquidGlassAvaloniaUI
 
         #endregion
 
-        static LiquidGlassControl()
+        static LiquidGlassButton()
         {
             // 当任何属性变化时，触发重新渲染
-            AffectsRender<LiquidGlassControl>(
+            AffectsRender<LiquidGlassButton>(
                 DisplacementScaleProperty,
                 BlurAmountProperty,
                 SaturationProperty,
@@ -237,6 +220,63 @@ namespace LiquidGlassAvaloniaUI
             );
         }
 
+        public LiquidGlassButton()
+        {
+            // 监听所有属性变化并立即重新渲染
+            PropertyChanged += OnPropertyChanged;
+            
+            // 监听DataContext变化，确保绑定生效后立即重新渲染
+            PropertyChanged += (sender, args) =>
+            {
+                if (args.Property == DataContextProperty)
+                {
+                    Console.WriteLine($"[LiquidGlassButton] DataContext changed - forcing re-render");
+                    // 延迟一下确保绑定完全生效
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() => InvalidateVisual(), Avalonia.Threading.DispatcherPriority.Background);
+                }
+            };
+            
+            // 确保控件加载完成后立即重新渲染，以应用正确的初始参数
+            this.Loaded += (sender, e) => 
+            {
+                Console.WriteLine($"[LiquidGlassButton] Loaded event - forcing re-render with current values");
+                InvalidateVisual();
+            };
+            
+            // 在属性系统完全初始化后再次渲染
+            this.AttachedToVisualTree += (sender, e) =>
+            {
+                Console.WriteLine($"[LiquidGlassButton] AttachedToVisualTree - forcing re-render");
+                InvalidateVisual();
+            };
+        }
+
+        private void OnPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            // 强制立即重新渲染
+            if (e.Property == DisplacementScaleProperty ||
+                e.Property == BlurAmountProperty ||
+                e.Property == SaturationProperty ||
+                e.Property == AberrationIntensityProperty ||
+                e.Property == ElasticityProperty ||
+                e.Property == CornerRadiusProperty ||
+                e.Property == ModeProperty ||
+                e.Property == IsHoveredProperty ||
+                e.Property == IsActiveProperty ||
+                e.Property == OverLightProperty ||
+                e.Property == MouseOffsetXProperty ||
+                e.Property == MouseOffsetYProperty ||
+                e.Property == GlobalMouseXProperty ||
+                e.Property == GlobalMouseYProperty ||
+                e.Property == ActivationZoneProperty)
+            {
+                Console.WriteLine($"[LiquidGlassButton] Property {e.Property.Name} changed from {e.OldValue} to {e.NewValue}");
+                InvalidateVisual();
+            }
+        }
+
+        #region Mouse Event Handlers
+
         protected override void OnPointerEntered(Avalonia.Input.PointerEventArgs e)
         {
             base.OnPointerEntered(e);
@@ -248,6 +288,11 @@ namespace LiquidGlassAvaloniaUI
         {
             base.OnPointerExited(e);
             IsHovered = false;
+            // 鼠标离开时重置位置
+            MouseOffsetX = 0.0;
+            MouseOffsetY = 0.0;
+            GlobalMouseX = 0.0;
+            GlobalMouseY = 0.0;
         }
 
         protected override void OnPointerMoved(Avalonia.Input.PointerEventArgs e)
@@ -268,11 +313,17 @@ namespace LiquidGlassAvaloniaUI
             IsActive = false;
         }
 
+        #endregion
+
+        #region Helper Methods
+
         /// <summary>
         /// 更新鼠标位置并计算相对偏移
         /// </summary>
         private void UpdateMousePosition(Point position)
         {
+            if (Bounds.Width == 0 || Bounds.Height == 0) return;
+
             var centerX = Bounds.Width / 2;
             var centerY = Bounds.Height / 2;
 
@@ -348,6 +399,8 @@ namespace LiquidGlassAvaloniaUI
             );
         }
 
+        #endregion
+
         public override void Render(DrawingContext context)
         {
             var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
@@ -382,27 +435,5 @@ namespace LiquidGlassAvaloniaUI
                 context.Custom(new LiquidGlassDrawOperation(bounds, parameters));
             }
         }
-    }
-
-    /// <summary>
-    /// 液态玻璃效果参数集合
-    /// </summary>
-    public struct LiquidGlassParameters
-    {
-        public double DisplacementScale { get; set; }
-        public double BlurAmount { get; set; }
-        public double Saturation { get; set; }
-        public double AberrationIntensity { get; set; }
-        public double Elasticity { get; set; }
-        public double CornerRadius { get; set; }
-        public LiquidGlassMode Mode { get; set; }
-        public bool IsHovered { get; set; }
-        public bool IsActive { get; set; }
-        public bool OverLight { get; set; }
-        public double MouseOffsetX { get; set; }
-        public double MouseOffsetY { get; set; }
-        public double GlobalMouseX { get; set; }
-        public double GlobalMouseY { get; set; }
-        public double ActivationZone { get; set; }
     }
 }

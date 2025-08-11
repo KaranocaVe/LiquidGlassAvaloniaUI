@@ -1,67 +1,462 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:LiquidGlassAvaloniaUI"
         xmlns:vm="using:AvaloniaApplication1.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:liquidGlassAvaloniaUi="clr-namespace:LiquidGlassAvaloniaUI;assembly=LiquidGlassAvaloniaUI"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="AvaloniaApplication1.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="AvaloniaApplication1">
-
-    <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
-    </Design.DataContext>
-
+        Title="Liquid Glass AvaloniaUI Demo"
+        Width="1200" Height="800"
+        Background="#FF1a1a1a">
 
     <Grid>
+        <!-- 背景图像用于测试液态玻璃效果 -->
+        <Image Source="../Assets/background.jpg"
+               Stretch="UniformToFill"
+               Opacity="0.7"/>
 
-        <!-- 1. 背景层：一张图片 -->
-        <!-- 请确保您在 Assets 文件夹中有一张名为 'background.jpg' 的图片 -->
-        <!-- 并且它的“生成操作”已设为“AvaloniaResource” -->
-        <Image Source="/Assets/Wallpaper.png" Stretch="UniformToFill" />
+        <!-- 主要内容区域 -->
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel HorizontalAlignment="Center" Margin="20" Spacing="20">
 
-        <!-- 2. 在液态玻璃下方的背景文字 -->
-        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20" IsHitTestVisible="False">
-            <TextBlock Text="你好，Avalonia!" FontSize="48" FontWeight="Bold" Foreground="White" />
-            <TextBlock Text="这是在液态玻璃效果下方的文本。" FontSize="24" Foreground="LightGray" />
-        </StackPanel>
+                <!-- 标题 -->
+                <TextBlock Text="Liquid Glass AvaloniaUI Demo"
+                           FontSize="28"
+                           FontWeight="Bold"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           Margin="0,10,0,10"/>
 
-        <!-- 3. 液态玻璃效果层 -->
-        <!-- 这是一个独立的控件，只负责显示效果，没有子元素。 -->
-        <Border HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Width="450"
-                Height="250"
-                BoxShadow="0 0 30 5 #33000000"
-                CornerRadius="100"
-                ClipToBounds="True">
-            <liquidGlassAvaloniaUi:LiquidGlassControl Radius="{Binding #RadiusSlider.Value}" />
-        </Border>
+                <!-- 悬浮卡片控制面板 -->
+                <Border Background="#40FFFFFF"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Floating Draggable Card Control"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="10">
+                            <CheckBox Content="Show Floating Card"
+                                      IsChecked="{Binding ShowFloatingCard}"
+                                      Foreground="White"/>
+                            <TextBlock Text="Position:" Foreground="White" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding FloatingCardX, StringFormat='X: {0:F0}'}" 
+                                       Foreground="White" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding FloatingCardY, StringFormat='Y: {0:F0}'}" 
+                                       Foreground="White" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-        <!-- 4. UI交互层 -->
-        <!-- 这是一个独立的 StackPanel，作为兄弟元素放置在效果层之上。 -->
-        <!-- 它的交互不会再导致渲染循环。 -->
-        <StackPanel HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Spacing="15">
-            <TextBlock Text="动态扭曲控制"
-                       FontSize="28"
-                       FontWeight="SemiBold"
-                       Foreground="White"/>
-            <TextBlock Text="{Binding #RadiusSlider.Value, StringFormat='扭曲半径: {0:F1}'}"
-                       Foreground="White"
-                       HorizontalAlignment="Center"/>
+                <!-- 实时参数演示卡片 -->
+                <Border Background="#40FFFFFF"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Live Parameter Demo Card (Updates with sliders below)"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <StackPanel HorizontalAlignment="Center">
+                            <local:LiquidGlassCard x:Name="DemoCard"
+                                                   Width="200" Height="150"
+                                                   DisplacementScale="{Binding DisplacementScale}"
+                                                   BlurAmount="{Binding BlurAmount}"
+                                                   Saturation="{Binding Saturation}"
+                                                   AberrationIntensity="{Binding AberrationIntensity}"
+                                                   CornerRadius="{Binding CornerRadius}"
+                                                   OverLight="{Binding OverLight}"
+                                                   Mode="{Binding Mode}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
 
-            <Slider x:Name="RadiusSlider"
-                    Minimum="0"
-                    Maximum="50"
-                    Value="25"
-                    Width="300" />
-        </StackPanel>
+                <!-- 液态玻璃卡片示例 - 不响应鼠标 -->
+                <Border Background="#40FFFFFF"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Liquid Glass Cards (Static - No Mouse Interaction)"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Center">
+                            <!-- Standard Card -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Standard" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassCard Width="120" Height="120"
+                                                       DisplacementScale="70"
+                                                       BlurAmount="0.0625"
+                                                       Saturation="300"
+                                                       AberrationIntensity="2"
+                                                       CornerRadius="30"
+                                                       Mode="Standard"/>
+                            </StackPanel>
 
+                            <!-- Polar Card -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Polar" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassCard Width="120" Height="120"
+                                                       DisplacementScale="50"
+                                                       BlurAmount="0.1"
+                                                       Saturation="160"
+                                                       AberrationIntensity="3"
+                                                       CornerRadius="12"
+                                                       Mode="Polar"/>
+                            </StackPanel>
+
+                            <!-- Prominent Card -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Prominent" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassCard Width="120" Height="120"
+                                                       DisplacementScale="90"
+                                                       BlurAmount="0.05"
+                                                       Saturation="120"
+                                                       AberrationIntensity="4"
+                                                       CornerRadius="12"
+                                                       Mode="Prominent"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 液态玻璃按钮示例 - 响应鼠标 -->
+                <Border Background="#40FFFFFF"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Liquid Glass Buttons (Interactive - Mouse Responsive)"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="15" HorizontalAlignment="Center">
+                            <!-- Standard Button -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Standard Button" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassButton Width="140" Height="70"
+                                                         DisplacementScale="70"
+                                                         BlurAmount="0.0625"
+                                                         Saturation="140"
+                                                         AberrationIntensity="2"
+                                                         Elasticity="0.15"
+                                                         CornerRadius="25"
+                                                         Mode="Standard"/>
+                            </StackPanel>
+
+                            <!-- Polar Button -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Polar Button" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassButton Width="140" Height="70"
+                                                         DisplacementScale="50"
+                                                         BlurAmount="0.1"
+                                                         Saturation="160"
+                                                         AberrationIntensity="3"
+                                                         Elasticity="0.2"
+                                                         CornerRadius="35"
+                                                         Mode="Polar"/>
+                            </StackPanel>
+
+                            <!-- Prominent Button -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Prominent Button" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassButton Width="140" Height="70"
+                                                         DisplacementScale="90"
+                                                         BlurAmount="0.05"
+                                                         Saturation="120"
+                                                         AberrationIntensity="4"
+                                                         Elasticity="0.25"
+                                                         CornerRadius="15"
+                                                         Mode="Prominent"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 特殊效果按钮 -->
+                <Border Background="#40FFFFFF"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Special Effect Buttons"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Center"/>
+                        
+                        <StackPanel Orientation="Horizontal" Spacing="20" HorizontalAlignment="Center">
+                            <!-- Shader 按钮 -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="Shader Mode" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassButton Width="180" Height="50"
+                                                         DisplacementScale="60"
+                                                         BlurAmount="0.08"
+                                                         Saturation="180"
+                                                         AberrationIntensity="2.5"
+                                                         Elasticity="0.3"
+                                                         CornerRadius="999"
+                                                         Mode="Shader"/>
+                            </StackPanel>
+
+                            <!-- 高弹性按钮 -->
+                            <StackPanel Spacing="5">
+                                <TextBlock Text="High Elasticity" FontSize="12" Foreground="White" HorizontalAlignment="Center"/>
+                                <local:LiquidGlassButton Width="180" Height="50"
+                                                         DisplacementScale="80"
+                                                         BlurAmount="0.06"
+                                                         Saturation="200"
+                                                         AberrationIntensity="3"
+                                                         Elasticity="0.4"
+                                                         CornerRadius="20"
+                                                         Mode="Standard"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- 控制演示按钮 -->
+                        <StackPanel Spacing="10" HorizontalAlignment="Center" Margin="0,15,0,0">
+                            <TextBlock Text="Parameter Control Demo Button"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="#FFDDDDDD"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="This button's parameters are controlled by the sliders below"
+                                       FontSize="11"
+                                       Foreground="#CCAAAAAA"
+                                       HorizontalAlignment="Center"/>
+                            <local:LiquidGlassButton x:Name="DemoButton"
+                                                     Width="250" Height="60"
+                                                     DisplacementScale="{Binding DisplacementScale}"
+                                                     BlurAmount="{Binding BlurAmount}"
+                                                     Saturation="{Binding Saturation}"
+                                                     AberrationIntensity="{Binding AberrationIntensity}"
+                                                     Elasticity="{Binding Elasticity}"
+                                                     CornerRadius="{Binding CornerRadius}"
+                                                     OverLight="{Binding OverLight}"
+                                                     Mode="{Binding Mode}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 参数控制面板 -->
+                <Border Background="#40000000"
+                        CornerRadius="15"
+                        Padding="15">
+                    <StackPanel>
+                        <TextBlock Text="Interactive Controls"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid ColumnDefinitions="180,200,60" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                              Margin="0,0,0,10">
+
+                            <!-- Displacement Scale -->
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="Displacement Scale"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="0" Grid.Column="1"
+                                    x:Name="DisplacementSlider"
+                                    Minimum="0" Maximum="200" Value="{Binding DisplacementScale}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2"
+                                       Text="{Binding DisplacementScale, StringFormat='{}{0:F0}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Blur Amount -->
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                                       Text="Blur Amount"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="1" Grid.Column="1"
+                                    x:Name="BlurSlider"
+                                    Minimum="0" Maximum="1" Value="{Binding BlurAmount}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2"
+                                       Text="{Binding BlurAmount, StringFormat='{}{0:F3}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Saturation -->
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                       Text="Saturation"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="2" Grid.Column="1"
+                                    x:Name="SaturationSlider"
+                                    Minimum="0" Maximum="400" Value="{Binding Saturation}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="2" Grid.Column="2"
+                                       Text="{Binding Saturation, StringFormat='{}{0:F0}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Aberration Intensity -->
+                            <TextBlock Grid.Row="3" Grid.Column="0"
+                                       Text="Aberration Intensity"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="3" Grid.Column="1"
+                                    x:Name="AberrationSlider"
+                                    Minimum="0" Maximum="10" Value="{Binding AberrationIntensity}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="3" Grid.Column="2"
+                                       Text="{Binding AberrationIntensity, StringFormat='{}{0:F1}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Corner Radius -->
+                            <TextBlock Grid.Row="4" Grid.Column="0"
+                                       Text="Corner Radius"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="4" Grid.Column="1"
+                                    x:Name="CornerRadiusSlider"
+                                    Minimum="0" Maximum="50" Value="{Binding CornerRadius}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="4" Grid.Column="2"
+                                       Text="{Binding CornerRadius, StringFormat='{}{0:F0}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Elasticity -->
+                            <TextBlock Grid.Row="5" Grid.Column="0"
+                                       Text="Elasticity"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="5" Grid.Column="1"
+                                    x:Name="ElasticitySlider"
+                                    Minimum="0" Maximum="1" Value="{Binding Elasticity}"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="5" Grid.Column="2"
+                                       Text="{Binding Elasticity, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Edge Mask Offset -->
+                            <TextBlock Grid.Row="6" Grid.Column="0"
+                                       Text="Edge Mask Offset"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <Slider Grid.Row="6" Grid.Column="1"
+                                    x:Name="EdgeMaskSlider"
+                                    Minimum="-10" Maximum="10" Value="0"
+                                    Margin="5"/>
+                            <TextBlock Grid.Row="6" Grid.Column="2"
+                                       Text="{Binding #EdgeMaskSlider.Value, StringFormat='{}{0:F1}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+
+                            <!-- Over Light Background -->
+                            <TextBlock Grid.Row="7" Grid.Column="0"
+                                       Text="Over Light Background"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                            <CheckBox Grid.Row="7" Grid.Column="1"
+                                      x:Name="OverLightCheckBox"
+                                      IsChecked="{Binding OverLight}"
+                                      VerticalAlignment="Center"
+                                      Margin="5"/>
+                            <TextBlock Grid.Row="7" Grid.Column="2"
+                                       Text="{Binding OverLight}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       Margin="5"/>
+                        </Grid>
+
+                        <!-- 模式切换 -->
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Center"
+                                    Spacing="10">
+                            <TextBlock Text="Mode:"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ModeComboBox"
+                                      SelectedIndex="{Binding ModeIndex}"
+                                      MinWidth="120">
+                                <ComboBoxItem Content="Standard"/>
+                                <ComboBoxItem Content="Polar"/>
+                                <ComboBoxItem Content="Prominent"/>
+                                <ComboBoxItem Content="Shader"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 使用说明 -->
+                <Border Background="#30FFFFFF"
+                        CornerRadius="10"
+                        Padding="15">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Usage Instructions"
+                                   FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="• Cards: Static liquid glass effect, no mouse interaction"
+                                   FontSize="12"
+                                   Foreground="#CCFFFFFF"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="• Buttons: Interactive liquid glass effect, responds to mouse movement and clicks"
+                                   FontSize="12"
+                                   Foreground="#CCFFFFFF"
+                                   TextWrapping="Wrap"/>
+                        <TextBlock Text="• Move your mouse over the buttons to see elastic deformation and displacement effects"
+                                   FontSize="12"
+                                   Foreground="#CCFFFFFF"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- 悬浮拖拽卡片层 - 在最顶层 -->
+        <Canvas IsVisible="{Binding ShowFloatingCard}">
+            <local:DraggableLiquidGlassCard x:Name="FloatingCard"
+                                            Width="180" Height="120"
+                                            DisplacementScale="{Binding DisplacementScale}"
+                                            BlurAmount="{Binding BlurAmount}"
+                                            Saturation="{Binding Saturation}"
+                                            AberrationIntensity="{Binding AberrationIntensity}"
+                                            CornerRadius="{Binding CornerRadius}"
+                                            OverLight="{Binding OverLight}"
+                                            Mode="{Binding Mode}"
+                                            X="{Binding FloatingCardX}"
+                                            Y="{Binding FloatingCardY}"
+                                            Canvas.Left="{Binding FloatingCardX}"
+                                            Canvas.Top="{Binding FloatingCardY}"/>
+        </Canvas>
     </Grid>
 </Window>

@@ -14,7 +14,7 @@ https://github.com/user-attachments/assets/b65269fe-d695-425a-81f7-118e58583341
 
 
 
-*The video above shows the visual effect with only the distortion applied. It looks quite impressive.*
+*The video above shows the visual effect with only the distortion applied. It looks quite impressive.The related code can be found in the branch*
 ## ⚠️ Current Status
 
 This is an experimental implementation with several known issues:

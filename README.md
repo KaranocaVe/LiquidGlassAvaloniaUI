@@ -8,7 +8,11 @@ This project recreates the beautiful liquid glass visual effect from Apple's des
 
 ![Preview](/Screenshot.png)
 
-https://github.com/KaranocaVe/LiquidGlassAvaloniaUI/raw/refs/heads/main/ScreenRecording.mp4
+
+
+https://github.com/user-attachments/assets/b65269fe-d695-425a-81f7-118e58583341
+
+
 
 *The video above shows the visual effect with only the distortion applied. It looks quite impressive.*
 ## ⚠️ Current Status

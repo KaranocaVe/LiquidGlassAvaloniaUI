@@ -2,6 +2,8 @@
 
 An AvaloniaUI implementation of Apple's liquid glass morphing effect, inspired by [liquid-glass-react](https://github.com/rdev/liquid-glass-react/tree/master).
 
+I will update this project once I see a liquidglass shader that satisfies me.
+
 ## 🎯 Overview
 
 This project recreates the beautiful liquid glass visual effect from Apple's design language using AvaloniaUI and SkiaSharp. The effect creates smooth, morphing glass-like distortions that respond to user interactions.

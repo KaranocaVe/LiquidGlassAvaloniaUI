@@ -45,9 +45,11 @@ namespace LiquidGlassAvaloniaUI
                 }
                 catch (Exception ex)
                 {
-                    #if DEBUG
+#if DEBUG
                     Console.WriteLine($"[DisplacementMapManager] Error loading displacement maps: {ex.Message}");
-                    #endif
+#else
+                    _ = ex;
+#endif
                 }
             }
         }
@@ -65,9 +67,11 @@ namespace LiquidGlassAvaloniaUI
             }
             catch (Exception ex)
             {
-                #if DEBUG
+#if DEBUG
                 Console.WriteLine($"[DisplacementMapManager] Failed to load {resourcePath}: {ex.Message}");
-                #endif
+#else
+                _ = ex;
+#endif
                 return null;
             }
         }
@@ -97,9 +101,11 @@ namespace LiquidGlassAvaloniaUI
                         }
                         catch (Exception ex)
                         {
-                            #if DEBUG
+#if DEBUG
                             Console.WriteLine($"[DisplacementMapManager] Error generating shader map: {ex.Message}");
-                            #endif
+#else
+                            _ = ex;
+#endif
                             _shaderGeneratedMaps[key] = null;
                         }
                     }

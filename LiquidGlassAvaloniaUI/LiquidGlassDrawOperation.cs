@@ -1,34 +1,45 @@
-﻿using Avalonia;
+﻿using System;
+using System.IO;
+using Avalonia;
+using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using SkiaSharp;
-using System;
-using System.IO;
-using Avalonia.Media;
 
 namespace LiquidGlassAvaloniaUI
 {
-    /// <summary>
-    /// 液态玻璃绘制操作 - 处理 Skia 渲染的自定义绘图操作
-    /// </summary>
     internal class LiquidGlassDrawOperation : ICustomDrawOperation
     {
+        private static SKRuntimeEffect? s_lensEffect;
+        private static SKRuntimeEffect? s_highlightEffect;
+        private static SKRuntimeEffect? s_blurEffect;
+        private static SKRuntimeEffect? s_interactiveHighlightEffect;
+        private static bool s_loaded;
+
         private readonly Rect _bounds;
-        private readonly LiquidGlassParameters _parameters;
+        private readonly LiquidGlassDrawParameters _parameters;
+        private readonly LiquidGlassBackdropSnapshot? _backdropSnapshot;
+        private readonly LiquidGlassDrawPass _pass;
 
-        private static SKRuntimeEffect? _liquidGlassEffect;
-        private static bool _isShaderLoaded;
-
-        public LiquidGlassDrawOperation(Rect bounds, LiquidGlassParameters parameters)
+        public LiquidGlassDrawOperation(
+            Rect bounds,
+            LiquidGlassDrawParameters parameters,
+            LiquidGlassBackdropSnapshot? snapshot,
+            LiquidGlassDrawPass pass)
         {
             _bounds = bounds;
             _parameters = parameters;
+            _backdropSnapshot = snapshot is not null && snapshot.TryAddLease() ? snapshot : null;
+            _pass = pass;
         }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+            _backdropSnapshot?.ReleaseLease();
+        }
 
-        public bool HitTest(Point p) => _bounds.Contains(p);
+        public bool HitTest(Point p) => false;
 
         public Rect Bounds => _bounds;
 
@@ -37,393 +48,408 @@ namespace LiquidGlassAvaloniaUI
         public void Render(ImmediateDrawingContext context)
         {
             var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
-            if (leaseFeature is null) return;
+            if (leaseFeature is null)
+                return;
 
-            // 确保位移贴图已加载
-            DisplacementMapManager.LoadDisplacementMaps();
-
-            // 确保着色器只被加载一次
-            LoadShader();
+            LoadShaders();
 
             using var lease = leaseFeature.Lease();
             var canvas = lease.SkCanvas;
 
-            if (_liquidGlassEffect is null)
+            switch (_pass)
             {
-                DrawErrorHint(canvas);
-            }
-            else
-            {
-                DrawLiquidGlassEffect(canvas, lease);
+                case LiquidGlassDrawPass.Lens:
+                    RenderLens(canvas);
+                    break;
+                case LiquidGlassDrawPass.InteractiveHighlight:
+                    RenderInteractiveHighlight(canvas);
+                    break;
+                case LiquidGlassDrawPass.Highlight:
+                    RenderHighlight(canvas);
+                    break;
             }
         }
 
-        /// <summary>
-        /// 加载液态玻璃着色器
-        /// </summary>
-        private void LoadShader()
+        private static void LoadShaders()
         {
-            if (_isShaderLoaded) return;
-            _isShaderLoaded = true;
+            if (s_loaded)
+                return;
+            s_loaded = true;
 
+            s_lensEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassShader.sksl");
+            s_highlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassHighlight.sksl");
+            s_blurEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBlur.sksl");
+            s_interactiveHighlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
+        }
+
+        private static SKRuntimeEffect? LoadRuntimeEffect(string assetUriString)
+        {
             try
             {
-                // 加载SKSL着色器代码
-                var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassShader.sksl");
+                var assetUri = new Uri(assetUriString);
                 using var stream = AssetLoader.Open(assetUri);
                 using var reader = new StreamReader(stream);
                 var shaderCode = reader.ReadToEnd();
 
-                _liquidGlassEffect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
-                if (_liquidGlassEffect == null)
-                {
-                    Console.WriteLine($"[SKIA ERROR] Failed to create liquid glass effect: {errorText}");
-                }
+                var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+                if (effect == null)
+                    Console.WriteLine($"[LiquidGlass] Failed to create SKRuntimeEffect ({assetUriString}): {errorText}");
+
+                return effect;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[AVALONIA ERROR] Exception while loading liquid glass shader: {ex.Message}");
+                Console.WriteLine($"[LiquidGlass] Exception while loading shader ({assetUriString}): {ex.Message}");
+                return null;
             }
         }
 
-        /// <summary>
-        /// 绘制错误提示
-        /// </summary>
+        private void RenderLens(SKCanvas canvas)
+        {
+            if (s_lensEffect is null)
+            {
+                DrawErrorHint(canvas);
+                return;
+            }
+
+            if (_backdropSnapshot is null)
+            {
+                DrawBackdropNotReady(canvas);
+                return;
+            }
+
+        if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
+            return;
+
+        using var backdropShader = SKShader.CreateImage(
+            _backdropSnapshot.Image,
+            SKShaderTileMode.Clamp,
+            SKShaderTileMode.Clamp,
+            WithPixelOrigin(currentInvertedTransform, _backdropSnapshot.OriginInPixels));
+
+        var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+        if (size.Width <= 0 || size.Height <= 0)
+            return;
+
+        var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+        var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+
+        var blurRadius = (float)Clamp(_parameters.BlurRadius, 0.0, 100.0);
+
+        // Blur stage (approx) - runs before lens to match AndroidLiquidGlass' pipeline.
+        using var blurredShader = CreateBlurShader(backdropShader, blurRadius);
+        var lensInput = (SKShader?)blurredShader ?? backdropShader;
+
+        var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
+        var refractionAmount = (float)_parameters.RefractionAmount;
+        var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
+
+        SKShader? lensShader = null;
+        if (applyLens)
+        {
+            using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
+            lensUniforms["size"] = new[] { size.Width, size.Height };
+            lensUniforms["cornerRadii"] = cornerRadii;
+            lensUniforms["refractionHeight"] = refractionHeight;
+            lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
+            lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
+            lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
+
+            using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
+            lensChildren["content"] = lensInput;
+
+            lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
+        }
+
+        using var paint = new SKPaint
+        {
+            Shader = lensShader ?? lensInput,
+            IsAntialias = true
+        };
+
+        using var vibrancyFilter = CreateSaturationFilter((float)Clamp(_parameters.Vibrancy, 0.0, 3.0));
+        if (vibrancyFilter is not null)
+            paint.ColorFilter = vibrancyFilter;
+
+        var rect = SKRect.Create(0, 0, size.Width, size.Height);
+        using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+
+        canvas.Save();
+        canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
+        canvas.DrawRect(rect, paint);
+
+        DrawSurfaceOverlay(canvas, rect);
+
+        canvas.Restore();
+
+        lensShader?.Dispose();
+        }
+
+        private void RenderInteractiveHighlight(SKCanvas canvas)
+        {
+            if (s_interactiveHighlightEffect is null)
+                return;
+
+            var progress = (float)Clamp(_parameters.InteractiveProgress, 0.0, 1.0);
+            if (progress <= 0.001f)
+                return;
+
+            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            if (size.Width <= 0 || size.Height <= 0)
+                return;
+
+            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+
+            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+
+            canvas.Save();
+            canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
+
+            using (var basePaint = new SKPaint
+            {
+                Color = new SKColor(255, 255, 255, (byte)(Clamp(0.08f * progress * 255f, 0f, 255f))),
+                BlendMode = SKBlendMode.Plus,
+                IsAntialias = true
+            })
+            {
+                canvas.DrawRect(rect, basePaint);
+            }
+
+            using var uniforms = new SKRuntimeEffectUniforms(s_interactiveHighlightEffect);
+            uniforms["size"] = new[] { size.Width, size.Height };
+            uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, (float)Clamp(0.15 * progress, 0.0, 1.0) };
+            uniforms["radius"] = Math.Min(size.Width, size.Height) * 1.5f;
+            uniforms["position"] = new[]
+            {
+                (float)Clamp(_parameters.InteractivePosition.X, 0.0, size.Width),
+                (float)Clamp(_parameters.InteractivePosition.Y, 0.0, size.Height)
+            };
+
+            using var children = new SKRuntimeEffectChildren(s_interactiveHighlightEffect);
+            using var shader = s_interactiveHighlightEffect.ToShader(uniforms, children);
+
+            if (shader is not null)
+            {
+                using var paint = new SKPaint
+                {
+                    Shader = shader,
+                    BlendMode = SKBlendMode.Plus,
+                    IsAntialias = true
+                };
+                canvas.DrawRect(rect, paint);
+            }
+
+            canvas.Restore();
+        }
+
+        private void RenderHighlight(SKCanvas canvas)
+        {
+            if (s_highlightEffect is null)
+                return;
+
+        if (_parameters.HighlightOpacity <= 0.001 || _parameters.HighlightWidth <= 0.001)
+            return;
+
+        var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+        if (size.Width <= 0 || size.Height <= 0)
+            return;
+
+        var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+        var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+
+        using var uniforms = new SKRuntimeEffectUniforms(s_highlightEffect);
+        uniforms["size"] = new[] { size.Width, size.Height };
+        uniforms["cornerRadii"] = cornerRadii;
+
+        var alpha = (float)Clamp(_parameters.HighlightOpacity, 0.0, 1.0);
+        uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, alpha };
+
+        var angleRad = (float)(_parameters.HighlightAngleDegrees * (Math.PI / 180.0));
+        uniforms["angle"] = angleRad;
+        uniforms["falloff"] = (float)Clamp(_parameters.HighlightFalloff, 0.0, 8.0);
+
+        using var children = new SKRuntimeEffectChildren(s_highlightEffect);
+        using var shader = s_highlightEffect.ToShader(uniforms, children);
+        if (shader is null)
+            return;
+
+        var blurRadius = (float)Clamp(_parameters.HighlightBlurRadius, 0.0, 20.0);
+        using var maskFilter = blurRadius > 0.001f
+            ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blurRadius)
+            : null;
+
+        var strokeWidth = (float)(Math.Ceiling(Clamp(_parameters.HighlightWidth, 0.0, 100.0)) * 2.0);
+
+        using var paint = new SKPaint
+        {
+            Shader = shader,
+            IsAntialias = true,
+            BlendMode = SKBlendMode.Plus,
+            Style = SKPaintStyle.Stroke,
+            StrokeJoin = SKStrokeJoin.Round,
+            StrokeCap = SKStrokeCap.Round,
+            StrokeWidth = Math.Max(0.5f, strokeWidth),
+            MaskFilter = maskFilter
+        };
+
+        var rect = SKRect.Create(0, 0, size.Width, size.Height);
+        using var path = CreateRoundRectPath(rect, cornerRadii);
+
+        canvas.Save();
+        canvas.ClipPath(path, SKClipOperation.Intersect, true);
+        canvas.DrawPath(path, paint);
+        canvas.Restore();
+        }
+
+        private static SKShader? CreateBlurShader(SKShader input, float radius)
+        {
+            if (radius <= 0.001f)
+                return null;
+            if (s_blurEffect is null)
+                return null;
+
+            using var uniforms = new SKRuntimeEffectUniforms(s_blurEffect);
+            uniforms["radius"] = radius;
+            using var children = new SKRuntimeEffectChildren(s_blurEffect);
+            children["content"] = input;
+            return s_blurEffect.ToShader(uniforms, children);
+        }
+
+        private void DrawSurfaceOverlay(SKCanvas canvas, SKRect rect)
+        {
+            // AndroidLiquidGlass draws optional tint/surface fills via onDrawSurface.
+            // If TintColor is specified, it draws it twice: Hue blend + alpha fill.
+            if (_parameters.TintColor.A > 0)
+            {
+                var tint = _parameters.TintColor;
+                using var huePaint = new SKPaint
+                {
+                    Color = new SKColor(tint.R, tint.G, tint.B, 255),
+                    IsAntialias = true,
+                    BlendMode = SKBlendMode.Hue
+                };
+                canvas.DrawRect(rect, huePaint);
+
+                using var fillPaint = new SKPaint
+                {
+                    Color = new SKColor(tint.R, tint.G, tint.B, (byte)Clamp(tint.A * 0.75, 0.0, 255.0)),
+                    IsAntialias = true,
+                    BlendMode = SKBlendMode.SrcOver
+                };
+                canvas.DrawRect(rect, fillPaint);
+            }
+
+            if (_parameters.SurfaceColor.A > 0)
+            {
+                var surface = _parameters.SurfaceColor;
+                using var paint = new SKPaint
+                {
+                    Color = new SKColor(surface.R, surface.G, surface.B, surface.A),
+                    IsAntialias = true,
+                    BlendMode = SKBlendMode.SrcOver
+                };
+                canvas.DrawRect(rect, paint);
+            }
+        }
+
+        private static float[] GetCornerRadii(CornerRadius cornerRadius, float maxRadius)
+        {
+            var tl = (float)Clamp(cornerRadius.TopLeft, 0.0, maxRadius);
+            var tr = (float)Clamp(cornerRadius.TopRight, 0.0, maxRadius);
+            var br = (float)Clamp(cornerRadius.BottomRight, 0.0, maxRadius);
+            var bl = (float)Clamp(cornerRadius.BottomLeft, 0.0, maxRadius);
+            return new[] { tl, tr, br, bl };
+        }
+
+        private static SKPath CreateRoundRectPath(SKRect rect, float[] cornerRadii)
+        {
+            using var rr = new SKRoundRect();
+            rr.SetRectRadii(rect, new[]
+            {
+                new SKPoint(cornerRadii[0], cornerRadii[0]),
+                new SKPoint(cornerRadii[1], cornerRadii[1]),
+                new SKPoint(cornerRadii[2], cornerRadii[2]),
+                new SKPoint(cornerRadii[3], cornerRadii[3]),
+            });
+
+            var path = new SKPath();
+            path.AddRoundRect(rr, SKPathDirection.Clockwise);
+            return path;
+        }
+
+        private static SKColorFilter? CreateSaturationFilter(float saturation)
+        {
+            if (Math.Abs(saturation - 1.0f) < 0.0001f)
+                return null;
+
+        var invSat = 1f - saturation;
+        var r = 0.213f * invSat;
+        var g = 0.715f * invSat;
+        var b = 0.072f * invSat;
+
+        var m = new[]
+        {
+            r + saturation, g, b, 0f, 0f,
+            r, g + saturation, b, 0f, 0f,
+            r, g, b + saturation, 0f, 0f,
+            0f, 0f, 0f, 1f, 0f
+        };
+
+            return SKColorFilter.CreateColorMatrix(m);
+        }
+
         private void DrawErrorHint(SKCanvas canvas)
         {
             using var errorPaint = new SKPaint
             {
-                Color = new SKColor(255, 0, 0, 120), // 半透明红色
+                Color = new SKColor(255, 0, 0, 120),
                 Style = SKPaintStyle.Fill
             };
+
             canvas.DrawRect(SKRect.Create(0, 0, (float)_bounds.Width, (float)_bounds.Height), errorPaint);
-
-            using var textPaint = new SKPaint
-            {
-                Color = SKColors.White,
-                TextSize = 14,
-                IsAntialias = true,
-                TextAlign = SKTextAlign.Center
-            };
-            canvas.DrawText("Liquid Glass Shader Failed to Load!",
-                (float)_bounds.Width / 2, (float)_bounds.Height / 2, textPaint);
         }
 
-        /// <summary>
-        /// 绘制液态玻璃效果
-        /// </summary>
-        private void DrawLiquidGlassEffect(SKCanvas canvas, ISkiaSharpApiLease lease)
+        private void DrawBackdropNotReady(SKCanvas canvas)
         {
-            if (_liquidGlassEffect is null) return;
+            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            var rect = SKRect.Create(0, 0, size.Width, size.Height);
 
-            // 获取背景快照
-            using var backgroundSnapshot = lease.SkSurface.Snapshot();
-            if (backgroundSnapshot is null) return;
+            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            using var path = CreateRoundRectPath(rect, cornerRadii);
 
-            if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
-                return;
-
-            // 创建背景着色器
-            using var backdropShader = SKShader.CreateImage(
-                backgroundSnapshot,
-                SKShaderTileMode.Clamp,
-                SKShaderTileMode.Clamp,
-                currentInvertedTransform);
-
-            // 获取位移贴图
-            var displacementMap = DisplacementMapManager.GetDisplacementMap(
-                _parameters.Mode,
-                (int)_bounds.Width,
-                (int)_bounds.Height);
-
-            SKShader? displacementShader = null;
-            if (displacementMap != null && !displacementMap.IsEmpty && !displacementMap.IsNull)
+            using var paint = new SKPaint
             {
-                try
-                {
-                    // 额外验证位图数据完整性
-                    var info = displacementMap.Info;
-                    if (info.Width > 0 && info.Height > 0 && info.BytesSize > 0)
-                    {
-                        displacementShader = SKShader.CreateBitmap(
-                            displacementMap,
-                            SKShaderTileMode.Clamp,
-                            SKShaderTileMode.Clamp);
-                    }
-                    else
-                    {
-                        Console.WriteLine("[LiquidGlassDrawOperation] Displacement bitmap has invalid dimensions or size");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[LiquidGlassDrawOperation] Error creating displacement shader: {ex.Message}");
-                    displacementShader = null;
-                }
-            }
-            else
-            {
-                Console.WriteLine($"[LiquidGlassDrawOperation] No valid displacement map for mode: {_parameters.Mode}");
-            }
+                Color = new SKColor(255, 255, 255, 32),
+                IsAntialias = true
+            };
 
-            // 设置 Uniform 变量
-            using var uniforms = new SKRuntimeEffectUniforms(_liquidGlassEffect);
-
-            // 基础参数 - 修复参数范围和计算
-            uniforms["resolution"] = new[] { (float)_bounds.Width, (float)_bounds.Height };
-            
-            var displacementValue = (float)(_parameters.DisplacementScale * GetModeScale());
-            uniforms["displacementScale"] = displacementValue;
-            Console.WriteLine($"[LiquidGlassDrawOperation] DisplacementScale: {_parameters.DisplacementScale} -> {displacementValue}");
-            
-            uniforms["blurAmount"] = (float)_parameters.BlurAmount; // 直接传递，不要额外缩放
-            
-            // 修复饱和度计算 - TypeScript版本使用0-2范围，1为正常
-            uniforms["saturation"] = (float)(_parameters.Saturation / 100.0); // 140/100 = 1.4
-            
-            uniforms["aberrationIntensity"] = (float)_parameters.AberrationIntensity;
-            uniforms["cornerRadius"] = (float)_parameters.CornerRadius;
-
-            // 鼠标交互参数 - 修复坐标传递
-            uniforms["mouseOffset"] = new[] { (float)(_parameters.MouseOffsetX / 100.0), (float)(_parameters.MouseOffsetY / 100.0) };
-            uniforms["globalMouse"] = new[] { (float)_parameters.GlobalMouseX, (float)_parameters.GlobalMouseY };
-
-            // 状态参数
-            uniforms["isHovered"] = _parameters.IsHovered ? 1.0f : 0.0f;
-            uniforms["isActive"] = _parameters.IsActive ? 1.0f : 0.0f;
-            uniforms["overLight"] = _parameters.OverLight ? 1.0f : 0.0f;
-
-            // 修复边缘遮罩参数计算
-            var edgeMaskOffset = (float)Math.Max(0.1, (100.0 - _parameters.AberrationIntensity * 10.0) / 100.0);
-            uniforms["edgeMaskOffset"] = edgeMaskOffset;
-
-            // 修复色差偏移计算 - 根据TypeScript版本调整
-            var baseScale = _parameters.Mode == LiquidGlassMode.Shader ? 1.0f : 1.0f;
-            var redScale = baseScale;
-            var greenScale = baseScale - (float)_parameters.AberrationIntensity * 0.002f;
-            var blueScale = baseScale - (float)_parameters.AberrationIntensity * 0.004f;
-
-            uniforms["chromaticAberrationScales"] = new[] { redScale, greenScale, blueScale };
-
-            // 设置纹理
-            using var children = new SKRuntimeEffectChildren(_liquidGlassEffect);
-            children["backgroundTexture"] = backdropShader;
-
-            if (displacementShader != null)
-            {
-                children["displacementTexture"] = displacementShader;
-                uniforms["hasDisplacementMap"] = 1.0f;
-            }
-            else
-            {
-                uniforms["hasDisplacementMap"] = 0.0f;
-            }
-
-            // 创建最终着色器
-            try
-            {
-                using var finalShader = _liquidGlassEffect.ToShader(uniforms, children);
-                if (finalShader == null)
-                {
-                    Console.WriteLine("[LiquidGlassDrawOperation] Failed to create final shader");
-                    return;
-                }
-                
-                using var paint = new SKPaint { Shader = finalShader, IsAntialias = true };
-
-                // 应用背景模糊效果 - 修复模糊计算
-                if (_parameters.BlurAmount > 0.001) // 只有真正需要模糊时才应用
-                {
-                    // 使用更线性和可控的模糊半径计算
-                    var blurRadius = (float)(_parameters.BlurAmount * 20.0); // 调整缩放因子
-                    
-                    // 根据OverLight状态增加基础模糊（可选）
-                    if (_parameters.OverLight)
-                    {
-                        blurRadius += 2.0f; // 在亮色背景上增加轻微的基础模糊
-                    }
-                    
-                    // 确保模糊半径在合理范围内
-                    blurRadius = Math.Max(0.1f, Math.Min(blurRadius, 50.0f));
-                    
-                    using var blurFilter = SKImageFilter.CreateBlur(blurRadius, blurRadius);
-                    paint.ImageFilter = blurFilter;
-                }
-
-                // 绘制带圆角的效果 - 关键修复：只在圆角矩形内绘制
-                var cornerRadius = (float)Math.Min(_parameters.CornerRadius, Math.Min(_bounds.Width, _bounds.Height) / 2);
-                var rect = SKRect.Create(0, 0, (float)_bounds.Width, (float)_bounds.Height);
-                
-                // 创建圆角矩形路径
-                using var path = new SKPath();
-                path.AddRoundRect(rect, cornerRadius, cornerRadius);
-                
-                // 裁剪到圆角矩形并绘制
-                canvas.Save();
-                canvas.ClipPath(path, SKClipOperation.Intersect, true);
-                canvas.DrawRect(rect, paint);
-                canvas.Restore();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[LiquidGlassDrawOperation] Error creating or using shader: {ex.Message}");
-            }
-
-            // 绘制边框效果
-            DrawBorderEffects(canvas);
-
-            // 绘制悬停和激活状态效果
-            if (_parameters.IsHovered || _parameters.IsActive)
-            {
-                DrawInteractionEffects(canvas);
-            }
-
-            // 清理位移着色器
-            displacementShader?.Dispose();
+            canvas.Save();
+            canvas.ClipPath(path, SKClipOperation.Intersect, true);
+            canvas.DrawRect(rect, paint);
+            canvas.Restore();
         }
 
-        /// <summary>
-        /// 获取模式缩放系数 - 修复版本
-        /// </summary>
-        private double GetModeScale()
+        private static double Clamp(double value, double min, double max)
         {
-            // 所有模式都使用正向缩放，通过Shader内部逻辑区分
-            return _parameters.Mode switch
-            {
-                LiquidGlassMode.Standard => 1.0,
-                LiquidGlassMode.Polar => 1.2,    // Polar模式稍微增强效果
-                LiquidGlassMode.Prominent => 1.5, // Prominent模式显著增强效果
-                LiquidGlassMode.Shader => 1.0,
-                _ => 1.0
-            };
+            if (value < min) return min;
+            if (value > max) return max;
+            return value;
         }
 
-        /// <summary>
-        /// 绘制边框效果 (对应TS版本的多层边框)
-        /// </summary>
-        private void DrawBorderEffects(SKCanvas canvas)
+        private static SKMatrix WithPixelOrigin(SKMatrix invertedTransform, PixelPoint originInPixels)
         {
-            var cornerRadius = (float)Math.Min(_parameters.CornerRadius, Math.Min(_bounds.Width, _bounds.Height) / 2);
-            var rect = SKRect.Create(1.5f, 1.5f, (float)_bounds.Width - 3f, (float)_bounds.Height - 3f);
-
-            // 第一层边框 (Screen blend mode)
-            var angle = 135f + (float)_parameters.MouseOffsetX * 1.2f;
-            var startOpacity = 0.12f + Math.Abs((float)_parameters.MouseOffsetX) * 0.008f;
-            var midOpacity = 0.4f + Math.Abs((float)_parameters.MouseOffsetX) * 0.012f;
-            var startPos = Math.Max(10f, 33f + (float)_parameters.MouseOffsetY * 0.3f) / 100f;
-            var endPos = Math.Min(90f, 66f + (float)_parameters.MouseOffsetY * 0.4f) / 100f;
-
-            using var borderPaint1 = new SKPaint
-            {
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1f,
-                IsAntialias = true,
-                BlendMode = SKBlendMode.Screen
-            };
-
-            var colors = new SKColor[]
-            {
-                new SKColor(255, 255, 255, 0),
-                new SKColor(255, 255, 255, (byte)(startOpacity * 255)),
-                new SKColor(255, 255, 255, (byte)(midOpacity * 255)),
-                new SKColor(255, 255, 255, 0)
-            };
-
-            var positions = new float[] { 0f, startPos, endPos, 1f };
-
-            using var gradient1 = SKShader.CreateLinearGradient(
-                new SKPoint(0, 0),
-                new SKPoint((float)_bounds.Width, (float)_bounds.Height),
-                colors,
-                positions,
-                SKShaderTileMode.Clamp);
-
-            borderPaint1.Shader = gradient1;
-            canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, borderPaint1);
-
-            // 第二层边框 (Overlay blend mode)
-            using var borderPaint2 = new SKPaint
-            {
-                Style = SKPaintStyle.Stroke,
-                StrokeWidth = 1f,
-                IsAntialias = true,
-                BlendMode = SKBlendMode.Overlay
-            };
-
-            var colors2 = new SKColor[]
-            {
-                new SKColor(255, 255, 255, 0),
-                new SKColor(255, 255, 255, (byte)((startOpacity + 0.2f) * 255)),
-                new SKColor(255, 255, 255, (byte)((midOpacity + 0.2f) * 255)),
-                new SKColor(255, 255, 255, 0)
-            };
-
-            using var gradient2 = SKShader.CreateLinearGradient(
-                new SKPoint(0, 0),
-                new SKPoint((float)_bounds.Width, (float)_bounds.Height),
-                colors2,
-                positions,
-                SKShaderTileMode.Clamp);
-
-            borderPaint2.Shader = gradient2;
-            canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, borderPaint2);
-        }
-
-        /// <summary>
-        /// 绘制交互效果 (悬停和激活状态)
-        /// </summary>
-        private void DrawInteractionEffects(SKCanvas canvas)
-        {
-            var cornerRadius = (float)Math.Min(_parameters.CornerRadius, Math.Min(_bounds.Width, _bounds.Height) / 2);
-            var rect = SKRect.Create(0, 0, (float)_bounds.Width, (float)_bounds.Height);
-
-            if (_parameters.IsHovered)
-            {
-                // 悬停效果
-                using var hoverPaint = new SKPaint
-                {
-                    Style = SKPaintStyle.Fill,
-                    IsAntialias = true,
-                    BlendMode = SKBlendMode.Overlay
-                };
-
-                using var hoverGradient = SKShader.CreateRadialGradient(
-                    new SKPoint((float)_bounds.Width / 2, 0),
-                    (float)_bounds.Width / 2,
-                    new SKColor[] {
-                        new SKColor(255, 255, 255, 127), // 50% opacity
-                        new SKColor(255, 255, 255, 0)
-                    },
-                    new float[] { 0f, 0.5f },
-                    SKShaderTileMode.Clamp);
-
-                hoverPaint.Shader = hoverGradient;
-                canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, hoverPaint);
-            }
-
-            if (_parameters.IsActive)
-            {
-                // 激活效果
-                using var activePaint = new SKPaint
-                {
-                    Style = SKPaintStyle.Fill,
-                    IsAntialias = true,
-                    BlendMode = SKBlendMode.Overlay
-                };
-
-                using var activeGradient = SKShader.CreateRadialGradient(
-                    new SKPoint((float)_bounds.Width / 2, 0),
-                    (float)_bounds.Width,
-                    new SKColor[] {
-                        new SKColor(255, 255, 255, 204), // 80% opacity
-                        new SKColor(255, 255, 255, 0)
-                    },
-                    new float[] { 0f, 1f },
-                    SKShaderTileMode.Clamp);
-
-                activePaint.Shader = activeGradient;
-                canvas.DrawRoundRect(rect, cornerRadius, cornerRadius, activePaint);
-            }
+            // localMatrix = invertedTransform * Translate(+originInPixels)
+            //
+            // We first cancel the current canvas transform (so shader coordinates become device pixels),
+            // then shift into the clipped snapshot's coordinate system.
+            var ox = (float)originInPixels.X;
+            var oy = (float)originInPixels.Y;
+            invertedTransform.TransX = invertedTransform.TransX + invertedTransform.ScaleX * ox + invertedTransform.SkewX * oy;
+            invertedTransform.TransY = invertedTransform.TransY + invertedTransform.SkewY * ox + invertedTransform.ScaleY * oy;
+            return invertedTransform;
         }
     }
 }

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Platform;
 using SkiaSharp;
 using System;
@@ -84,30 +85,31 @@ namespace LiquidGlassAvaloniaUI
         {
             Console.WriteLine("[ShaderDebugger] 开始测试参数传递...");
 
-            var parameters = new LiquidGlassParameters
+            var parameters = new LiquidGlassDrawParameters
             {
-                DisplacementScale = 70.0,
-                BlurAmount = 0.0625,
-                Saturation = 140.0,
-                AberrationIntensity = 2.0,
-                Elasticity = 0.15,
-                CornerRadius = 25.0,
-                Mode = LiquidGlassMode.Standard,
-                IsHovered = false,
-                IsActive = false,
-                OverLight = false,
-                MouseOffsetX = 0.0,
-                MouseOffsetY = 0.0,
-                GlobalMouseX = 0.0,
-                GlobalMouseY = 0.0,
-                ActivationZone = 200.0
+                CornerRadius = new CornerRadius(25.0),
+                RefractionHeight = 12.0,
+                RefractionAmount = 24.0,
+                DepthEffect = false,
+                ChromaticAberration = false,
+                BlurRadius = 2.0,
+                Vibrancy = 1.5,
+                TintColor = Colors.Transparent,
+                SurfaceColor = Colors.Transparent,
+                HighlightEnabled = true,
+                HighlightWidth = 0.5,
+                HighlightBlurRadius = 0.25,
+                HighlightOpacity = 0.5,
+                HighlightAngleDegrees = 45.0,
+                HighlightFalloff = 1.0,
             };
 
-            Console.WriteLine($"[ShaderDebugger] DisplacementScale: {parameters.DisplacementScale}");
-            Console.WriteLine($"[ShaderDebugger] BlurAmount: {parameters.BlurAmount}");
-            Console.WriteLine($"[ShaderDebugger] Saturation: {parameters.Saturation}");
-            Console.WriteLine($"[ShaderDebugger] AberrationIntensity: {parameters.AberrationIntensity}");
-            Console.WriteLine($"[ShaderDebugger] Mode: {parameters.Mode}");
+            Console.WriteLine($"[ShaderDebugger] RefractionHeight: {parameters.RefractionHeight}");
+            Console.WriteLine($"[ShaderDebugger] RefractionAmount: {parameters.RefractionAmount}");
+            Console.WriteLine($"[ShaderDebugger] BlurRadius: {parameters.BlurRadius}");
+            Console.WriteLine($"[ShaderDebugger] Vibrancy: {parameters.Vibrancy}");
+            Console.WriteLine($"[ShaderDebugger] ChromaticAberration: {parameters.ChromaticAberration}");
+            Console.WriteLine($"[ShaderDebugger] DepthEffect: {parameters.DepthEffect}");
         }
     }
 }

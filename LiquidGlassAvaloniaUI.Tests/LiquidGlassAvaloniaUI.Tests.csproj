@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.8.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.0" PrivateAssets="all" />
+    <PackageReference Include="Avalonia" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Skia" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Headless" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Headless.XUnit" Version="11.3.10" />
+    <PackageReference Include="Avalonia.Themes.Simple" Version="11.3.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\\LiquidGlassAvaloniaUI\\LiquidGlassAvaloniaUI.csproj" />
+  </ItemGroup>
+</Project>

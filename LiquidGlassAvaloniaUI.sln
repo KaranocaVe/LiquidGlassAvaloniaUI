@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI", "Li
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Demo", "LiquidGlassAvaloniaUI.Demo\LiquidGlassAvaloniaUI.Demo.csproj", "{E73ABFB5-A255-4632-81F6-5AF65AE33744}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Tests", "LiquidGlassAvaloniaUI.Tests\LiquidGlassAvaloniaUI.Tests.csproj", "{B81FE68A-38D4-4B5C-AF63-6E2A2D3E9ED2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{E73ABFB5-A255-4632-81F6-5AF65AE33744}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E73ABFB5-A255-4632-81F6-5AF65AE33744}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E73ABFB5-A255-4632-81F6-5AF65AE33744}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B81FE68A-38D4-4B5C-AF63-6E2A2D3E9ED2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B81FE68A-38D4-4B5C-AF63-6E2A2D3E9ED2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B81FE68A-38D4-4B5C-AF63-6E2A2D3E9ED2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B81FE68A-38D4-4B5C-AF63-6E2A2D3E9ED2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

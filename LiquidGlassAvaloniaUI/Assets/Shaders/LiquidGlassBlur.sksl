@@ -1,0 +1,32 @@
+// Liquid Glass Blur Shader (simple 9-tap blur)
+// Used to approximate Android's RenderEffect blur stage before the lens refraction.
+
+uniform shader content;
+
+// Blur radius in Avalonia DIPs (same coordinate space as the draw call).
+uniform float radius;
+
+half4 main(float2 coord) {
+    float r = max(radius, 0.0);
+    if (r <= 0.001) {
+        return content.eval(coord);
+    }
+
+    float2 o = float2(r, r);
+
+    half4 c = half4(0.0);
+    c += content.eval(coord) * 0.25;
+
+    c += content.eval(coord + float2(o.x, 0.0)) * 0.125;
+    c += content.eval(coord - float2(o.x, 0.0)) * 0.125;
+    c += content.eval(coord + float2(0.0, o.y)) * 0.125;
+    c += content.eval(coord - float2(0.0, o.y)) * 0.125;
+
+    c += content.eval(coord + o) * 0.0625;
+    c += content.eval(coord + float2(o.x, -o.y)) * 0.0625;
+    c += content.eval(coord + float2(-o.x, o.y)) * 0.0625;
+    c += content.eval(coord - o) * 0.0625;
+
+    return c;
+}
+

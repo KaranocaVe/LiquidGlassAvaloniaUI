@@ -14,6 +14,7 @@ namespace LiquidGlassAvaloniaUI
         private static SKRuntimeEffect? s_lensEffect;
         private static SKRuntimeEffect? s_highlightEffect;
         private static SKRuntimeEffect? s_blurEffect;
+        private static SKRuntimeEffect? s_vibrancyEffect;
         private static SKRuntimeEffect? s_interactiveHighlightEffect;
         private static bool s_loaded;
 
@@ -79,6 +80,7 @@ namespace LiquidGlassAvaloniaUI
             s_lensEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassShader.sksl");
             s_highlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassHighlight.sksl");
             s_blurEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBlur.sksl");
+            s_vibrancyEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassVibrancy.sksl");
             s_interactiveHighlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
         }
 
@@ -118,71 +120,71 @@ namespace LiquidGlassAvaloniaUI
                 return;
             }
 
-        if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
-            return;
+            if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
+                return;
 
-        using var backdropShader = SKShader.CreateImage(
-            _backdropSnapshot.Image,
-            SKShaderTileMode.Clamp,
-            SKShaderTileMode.Clamp,
-            WithPixelOrigin(currentInvertedTransform, _backdropSnapshot.OriginInPixels));
+            using var backdropShader = SKShader.CreateImage(
+                _backdropSnapshot.Image,
+                SKShaderTileMode.Clamp,
+                SKShaderTileMode.Clamp,
+                WithPixelOrigin(currentInvertedTransform, _backdropSnapshot.OriginInPixels));
 
-        var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
-        if (size.Width <= 0 || size.Height <= 0)
-            return;
+            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            if (size.Width <= 0 || size.Height <= 0)
+                return;
 
-        var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-        var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
-        var blurRadius = (float)Clamp(_parameters.BlurRadius, 0.0, 100.0);
+            // AndroidLiquidGlass pipeline order:
+            //   vibrancy (saturation) -> blur -> lens
+            var vibrancy = (float)Clamp(_parameters.Vibrancy, 0.0, 3.0);
+            using var vibrancyShader = CreateVibrancyShader(backdropShader, vibrancy);
+            var preBlur = (SKShader?)vibrancyShader ?? backdropShader;
 
-        // Blur stage (approx) - runs before lens to match AndroidLiquidGlass' pipeline.
-        using var blurredShader = CreateBlurShader(backdropShader, blurRadius);
-        var lensInput = (SKShader?)blurredShader ?? backdropShader;
+            var blurRadius = (float)Clamp(_parameters.BlurRadius, 0.0, 100.0);
+            using var blurredShader = CreateBlurShader(preBlur, blurRadius);
+            var lensInput = (SKShader?)blurredShader ?? preBlur;
 
-        var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
-        var refractionAmount = (float)_parameters.RefractionAmount;
-        var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
+            var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
+            var refractionAmount = (float)_parameters.RefractionAmount;
+            var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
 
-        SKShader? lensShader = null;
-        if (applyLens)
-        {
-            using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
-            lensUniforms["size"] = new[] { size.Width, size.Height };
-            lensUniforms["cornerRadii"] = cornerRadii;
-            lensUniforms["refractionHeight"] = refractionHeight;
-            lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
-            lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
-            lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
+            SKShader? lensShader = null;
+            if (applyLens)
+            {
+                using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
+                lensUniforms["size"] = new[] { size.Width, size.Height };
+                lensUniforms["cornerRadii"] = cornerRadii;
+                lensUniforms["refractionHeight"] = refractionHeight;
+                lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
+                lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
+                lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
 
-            using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
-            lensChildren["content"] = lensInput;
+                using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
+                lensChildren["content"] = lensInput;
 
-            lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
-        }
+                lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
+            }
 
-        using var paint = new SKPaint
-        {
-            Shader = lensShader ?? lensInput,
-            IsAntialias = true
-        };
+            using var paint = new SKPaint
+            {
+                Shader = lensShader ?? lensInput,
+                IsAntialias = true
+            };
 
-        using var vibrancyFilter = CreateSaturationFilter((float)Clamp(_parameters.Vibrancy, 0.0, 3.0));
-        if (vibrancyFilter is not null)
-            paint.ColorFilter = vibrancyFilter;
+            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            using var clipPath = CreateRoundRectPath(rect, cornerRadii);
 
-        var rect = SKRect.Create(0, 0, size.Width, size.Height);
-        using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+            canvas.Save();
+            canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
+            canvas.DrawRect(rect, paint);
 
-        canvas.Save();
-        canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
-        canvas.DrawRect(rect, paint);
+            DrawSurfaceOverlay(canvas, rect);
 
-        DrawSurfaceOverlay(canvas, rect);
+            canvas.Restore();
 
-        canvas.Restore();
-
-        lensShader?.Dispose();
+            lensShader?.Dispose();
         }
 
         private void RenderInteractiveHighlight(SKCanvas canvas)
@@ -249,58 +251,69 @@ namespace LiquidGlassAvaloniaUI
             if (s_highlightEffect is null)
                 return;
 
-        if (_parameters.HighlightOpacity <= 0.001 || _parameters.HighlightWidth <= 0.001)
-            return;
+            if (_parameters.HighlightOpacity <= 0.001 || _parameters.HighlightWidth <= 0.001)
+                return;
 
-        var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
-        if (size.Width <= 0 || size.Height <= 0)
-            return;
+            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            if (size.Width <= 0 || size.Height <= 0)
+                return;
 
-        var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-        var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
-        using var uniforms = new SKRuntimeEffectUniforms(s_highlightEffect);
-        uniforms["size"] = new[] { size.Width, size.Height };
-        uniforms["cornerRadii"] = cornerRadii;
+            using var uniforms = new SKRuntimeEffectUniforms(s_highlightEffect);
+            uniforms["size"] = new[] { size.Width, size.Height };
+            uniforms["cornerRadii"] = cornerRadii;
 
-        var alpha = (float)Clamp(_parameters.HighlightOpacity, 0.0, 1.0);
-        uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, alpha };
+            var alpha = (float)Clamp(_parameters.HighlightOpacity, 0.0, 1.0);
+            uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, alpha };
 
-        var angleRad = (float)(_parameters.HighlightAngleDegrees * (Math.PI / 180.0));
-        uniforms["angle"] = angleRad;
-        uniforms["falloff"] = (float)Clamp(_parameters.HighlightFalloff, 0.0, 8.0);
+            var angleRad = (float)(_parameters.HighlightAngleDegrees * (Math.PI / 180.0));
+            uniforms["angle"] = angleRad;
+            uniforms["falloff"] = (float)Clamp(_parameters.HighlightFalloff, 0.0, 8.0);
 
-        using var children = new SKRuntimeEffectChildren(s_highlightEffect);
-        using var shader = s_highlightEffect.ToShader(uniforms, children);
-        if (shader is null)
-            return;
+            using var children = new SKRuntimeEffectChildren(s_highlightEffect);
+            using var shader = s_highlightEffect.ToShader(uniforms, children);
+            if (shader is null)
+                return;
 
-        var blurRadius = (float)Clamp(_parameters.HighlightBlurRadius, 0.0, 20.0);
-        using var maskFilter = blurRadius > 0.001f
-            ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blurRadius)
-            : null;
+            var blurRadius = (float)Clamp(_parameters.HighlightBlurRadius, 0.0, 20.0);
+            using var maskFilter = blurRadius > 0.001f
+                ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blurRadius)
+                : null;
 
-        var strokeWidth = (float)(Math.Ceiling(Clamp(_parameters.HighlightWidth, 0.0, 100.0)) * 2.0);
+            var strokeWidth = (float)(Math.Ceiling(Clamp(_parameters.HighlightWidth, 0.0, 100.0)) * 2.0);
 
-        using var paint = new SKPaint
-        {
-            Shader = shader,
-            IsAntialias = true,
-            BlendMode = SKBlendMode.Plus,
-            Style = SKPaintStyle.Stroke,
-            StrokeJoin = SKStrokeJoin.Round,
-            StrokeCap = SKStrokeCap.Round,
-            StrokeWidth = Math.Max(0.5f, strokeWidth),
-            MaskFilter = maskFilter
-        };
+            using var paint = new SKPaint
+            {
+                Shader = shader,
+                IsAntialias = true,
+                BlendMode = SKBlendMode.Plus,
+                Style = SKPaintStyle.Stroke,
+                StrokeJoin = SKStrokeJoin.Round,
+                StrokeCap = SKStrokeCap.Round,
+                StrokeWidth = Math.Max(0.5f, strokeWidth),
+                MaskFilter = maskFilter
+            };
 
-        var rect = SKRect.Create(0, 0, size.Width, size.Height);
-        using var path = CreateRoundRectPath(rect, cornerRadii);
+            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            using var path = CreateRoundRectPath(rect, cornerRadii);
 
-        canvas.Save();
-        canvas.ClipPath(path, SKClipOperation.Intersect, true);
-        canvas.DrawPath(path, paint);
-        canvas.Restore();
+            // Mirror AndroidLiquidGlass' highlight GraphicsLayer "safeSize + translate" approach.
+            // This avoids edge artifacts when the visual is transformed and/or rasterized into an intermediate surface.
+            const float safePad = 1.0f;
+
+            canvas.Save();
+            canvas.Translate(-safePad, -safePad);
+            var layerBounds = SKRect.Create(0, 0, size.Width + safePad * 2.0f, size.Height + safePad * 2.0f);
+            canvas.SaveLayer(layerBounds, null);
+
+            canvas.Translate(safePad, safePad);
+            canvas.ClipPath(path, SKClipOperation.Intersect, true);
+            canvas.DrawPath(path, paint);
+
+            canvas.Restore();
+            canvas.Restore();
         }
 
         private static SKShader? CreateBlurShader(SKShader input, float radius)
@@ -315,6 +328,20 @@ namespace LiquidGlassAvaloniaUI
             using var children = new SKRuntimeEffectChildren(s_blurEffect);
             children["content"] = input;
             return s_blurEffect.ToShader(uniforms, children);
+        }
+
+        private static SKShader? CreateVibrancyShader(SKShader input, float saturation)
+        {
+            if (Math.Abs(saturation - 1.0f) < 0.0001f)
+                return null;
+            if (s_vibrancyEffect is null)
+                return null;
+
+            using var uniforms = new SKRuntimeEffectUniforms(s_vibrancyEffect);
+            uniforms["saturation"] = saturation;
+            using var children = new SKRuntimeEffectChildren(s_vibrancyEffect);
+            children["content"] = input;
+            return s_vibrancyEffect.ToShader(uniforms, children);
         }
 
         private void DrawSurfaceOverlay(SKCanvas canvas, SKRect rect)
@@ -377,27 +404,6 @@ namespace LiquidGlassAvaloniaUI
             var path = new SKPath();
             path.AddRoundRect(rr, SKPathDirection.Clockwise);
             return path;
-        }
-
-        private static SKColorFilter? CreateSaturationFilter(float saturation)
-        {
-            if (Math.Abs(saturation - 1.0f) < 0.0001f)
-                return null;
-
-        var invSat = 1f - saturation;
-        var r = 0.213f * invSat;
-        var g = 0.715f * invSat;
-        var b = 0.072f * invSat;
-
-        var m = new[]
-        {
-            r + saturation, g, b, 0f, 0f,
-            r, g + saturation, b, 0f, 0f,
-            r, g, b + saturation, 0f, 0f,
-            0f, 0f, 0f, 1f, 0f
-        };
-
-            return SKColorFilter.CreateColorMatrix(m);
         }
 
         private void DrawErrorHint(SKCanvas canvas)

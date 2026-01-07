@@ -146,6 +146,8 @@
                                     <Button Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
                                             HorizontalContentAlignment="Center"
                                             VerticalContentAlignment="Center"
                                             Click="OnPrimaryLiquidButtonClick">
@@ -172,6 +174,8 @@
                                     <Button Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
                                             HorizontalContentAlignment="Center"
                                             VerticalContentAlignment="Center"
                                             Click="OnSecondaryLiquidButtonClick">

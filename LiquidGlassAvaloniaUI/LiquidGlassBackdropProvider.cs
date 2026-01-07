@@ -156,8 +156,6 @@ namespace LiquidGlassAvaloniaUI
                     return;
                 }
 
-                currentSnapshot?.RequestDispose();
-
                 if (snapshotImage is null)
                     return;
 
@@ -168,7 +166,10 @@ namespace LiquidGlassAvaloniaUI
                 state.SnapshotScaling = scaling;
                 state.LastCaptureTicksUtc = nowTicks;
 
+                // Publish the new snapshot before disposing the old one. Disposing first can leave a short
+                // window where the render thread observes a disposed snapshot and falls back to a white fill.
                 System.Threading.Volatile.Write(ref state.Snapshot, snapshot);
+                currentSnapshot?.RequestDispose();
             }
             finally
             {
@@ -342,7 +343,8 @@ namespace LiquidGlassAvaloniaUI
             switch (control)
             {
                 case LiquidGlassSurface surface:
-                    return Math.Max(minInflate, Math.Abs(surface.RefractionAmount) + surface.BlurRadius + 4.0);
+                    // Blur is a 5x5 kernel with max offset 2*BlurRadius.
+                    return Math.Max(minInflate, Math.Abs(surface.RefractionAmount) + surface.BlurRadius * 2.0 + 4.0);
                 case LiquidGlassCard card:
                     return Math.Max(minInflate, Math.Abs(card.DisplacementScale) + card.BlurAmount + 4.0);
                 case LiquidGlassControl legacy:

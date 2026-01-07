@@ -7,8 +7,10 @@ using System;
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
-    /// 可拖拽的液态玻璃卡片 - 悬浮在所有内容之上，支持鼠标拖拽移动
+    /// Legacy “liquid glass” draggable card kept for compatibility.
+    /// Prefer <see cref="LiquidGlassSurface"/> for the AndroidLiquidGlass-style pipeline.
     /// </summary>
+    [Obsolete("Use LiquidGlassSurface. This control keeps legacy parameter names and is kept for compatibility.")]
     public class DraggableLiquidGlassCard : Control
     {
         #region Avalonia Properties
@@ -155,56 +157,12 @@ namespace LiquidGlassAvaloniaUI
 
         public DraggableLiquidGlassCard()
         {
-            // 监听所有属性变化并立即重新渲染
-            PropertyChanged += OnPropertyChanged;
-            
-            // 监听DataContext变化，确保绑定生效后立即重新渲染
-            PropertyChanged += (sender, args) =>
-            {
-                if (args.Property == DataContextProperty)
-                {
-                    Console.WriteLine($"[DraggableLiquidGlassCard] DataContext changed - forcing re-render");
-                    // 延迟一下确保绑定完全生效
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => InvalidateVisual(), Avalonia.Threading.DispatcherPriority.Background);
-                }
-            };
-            
-            // 确保控件加载完成后立即重新渲染，以应用正确的初始参数
-            this.Loaded += (sender, e) => 
-            {
-                Console.WriteLine($"[DraggableLiquidGlassCard] Loaded event - forcing re-render with current values");
-                InvalidateVisual();
-            };
-            
-            // 在属性系统完全初始化后再次渲染
-            this.AttachedToVisualTree += (sender, e) =>
-            {
-                Console.WriteLine($"[DraggableLiquidGlassCard] AttachedToVisualTree - forcing re-render");
-                InvalidateVisual();
-            };
-
             // 设置默认大小
             Width = 200;
             Height = 150;
             
             // 设置鼠标光标为手型，表示可拖拽
             Cursor = new Cursor(StandardCursorType.Hand);
-        }
-
-        private void OnPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            // 强制立即重新渲染
-            if (e.Property == DisplacementScaleProperty ||
-                e.Property == BlurAmountProperty ||
-                e.Property == SaturationProperty ||
-                e.Property == AberrationIntensityProperty ||
-                e.Property == CornerRadiusProperty ||
-                e.Property == ModeProperty ||
-                e.Property == OverLightProperty)
-            {
-                Console.WriteLine($"[DraggableLiquidGlassCard] Property {e.Property.Name} changed from {e.OldValue} to {e.NewValue}");
-                InvalidateVisual();
-            }
         }
 
         #region Mouse Events for Dragging
@@ -225,8 +183,6 @@ namespace LiquidGlassAvaloniaUI
                 
                 // 改变光标为拖拽状态
                 Cursor = new Cursor(StandardCursorType.SizeAll);
-                
-                Console.WriteLine($"[DraggableLiquidGlassCard] Drag started at ({_dragStartX}, {_dragStartY})");
             }
         }
 
@@ -242,8 +198,6 @@ namespace LiquidGlassAvaloniaUI
                 
                 X = _dragStartX + deltaX;
                 Y = _dragStartY + deltaY;
-                
-                Console.WriteLine($"[DraggableLiquidGlassCard] Dragging to ({X}, {Y})");
             }
         }
 
@@ -258,8 +212,6 @@ namespace LiquidGlassAvaloniaUI
                 
                 // 恢复光标为手型
                 Cursor = new Cursor(StandardCursorType.Hand);
-                
-                Console.WriteLine($"[DraggableLiquidGlassCard] Drag ended at ({X}, {Y})");
             }
         }
 
@@ -271,7 +223,6 @@ namespace LiquidGlassAvaloniaUI
             {
                 _isDragging = false;
                 Cursor = new Cursor(StandardCursorType.Hand);
-                Console.WriteLine($"[DraggableLiquidGlassCard] Drag cancelled");
             }
         }
 
@@ -285,33 +236,35 @@ namespace LiquidGlassAvaloniaUI
 
         public override void Render(DrawingContext context)
         {
+            if (LiquidGlassBackdropProvider.IsCapturing)
+                return;
+
+            LiquidGlassBackdropProvider.EnsureSnapshot(this);
+            var backdropSnapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+
             var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
-            // 调试：输出当前参数值
-            Console.WriteLine($"[DraggableLiquidGlassCard] Rendering at ({X}, {Y}) with DisplacementScale={DisplacementScale}, Saturation={Saturation}");
-
-            // 创建液态玻璃效果参数 - 悬浮卡片模式
-            var parameters = new LiquidGlassParameters
+            var parameters = new LiquidGlassDrawParameters
             {
-                DisplacementScale = DisplacementScale,
-                BlurAmount = BlurAmount,
-                Saturation = Saturation,
-                AberrationIntensity = AberrationIntensity,
-                Elasticity = 0.0, // 悬浮卡片不需要弹性效果
-                CornerRadius = CornerRadius,
-                Mode = Mode,
-                IsHovered = _isDragging, // 拖拽时显示悬停效果
-                IsActive = false,
-                OverLight = OverLight,
-                MouseOffsetX = 0.0, // 静态位置
-                MouseOffsetY = 0.0, // 静态位置
-                GlobalMouseX = 0.0,
-                GlobalMouseY = 0.0,
-                ActivationZone = 0.0 // 无激活区域
+                CornerRadius = new CornerRadius(CornerRadius),
+                RefractionHeight = 12.0,
+                RefractionAmount = DisplacementScale,
+                DepthEffect = Mode == LiquidGlassMode.Prominent,
+                ChromaticAberration = AberrationIntensity > 0.001,
+                BlurRadius = BlurAmount,
+                Vibrancy = Saturation / 100.0,
+                TintColor = Colors.Transparent,
+                SurfaceColor = Colors.Transparent,
+                HighlightEnabled = true,
+                HighlightWidth = 0.5,
+                HighlightBlurRadius = 0.25,
+                HighlightOpacity = 0.5,
+                HighlightAngleDegrees = 45.0,
+                HighlightFalloff = 1.0,
             };
 
-            // 静态渲染，无变换
-            context.Custom(new LiquidGlassDrawOperation(bounds, parameters));
+            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, backdropSnapshot, LiquidGlassDrawPass.Lens));
+            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
         }
     }
 }

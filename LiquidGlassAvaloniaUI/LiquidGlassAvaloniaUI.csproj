@@ -3,13 +3,14 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>9</LangVersion>
+        <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="11.3.3" />
-      <PackageReference Include="Avalonia.Skia" Version="11.3.3" />
-      <PackageReference Include="SkiaSharp" Version="3.119.0" />
+      <PackageReference Include="Avalonia" Version="11.3.10" />
+      <PackageReference Include="Avalonia.Skia" Version="11.3.10" />
+      <PackageReference Include="SkiaSharp" Version="3.119.1" />
     </ItemGroup>
 
     <ItemGroup>
@@ -19,6 +20,12 @@
 <!--      <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />-->
       <None Remove="Assets\Shaders\LiquidGlassShader.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassShader.sksl" />
+      <None Remove="Assets\Shaders\LiquidGlassHighlight.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassHighlight.sksl" />
+      <None Remove="Assets\Shaders\LiquidGlassBlur.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassBlur.sksl" />
+      <None Remove="Assets\Shaders\LiquidGlassInteractiveHighlight.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassInteractiveHighlight.sksl" />
       <None Remove="Assets\DisplacementMaps\displacementMap.jpeg" />
       <AvaloniaResource Include="Assets\DisplacementMaps\standard_displacement.jpeg" />
       <None Remove="Assets\DisplacementMaps\polarDisplacementMap.jpeg" />

@@ -1,0 +1,14 @@
+// Liquid Glass Interactive Highlight Shader
+// Matches AndroidLiquidGlass catalog InteractiveHighlight runtime shader.
+
+uniform float2 size;
+uniform float4 color;   // RGBA (0..1)
+uniform float radius;
+uniform float2 position;
+
+half4 main(float2 coord) {
+    float dist = distance(coord, position);
+    float intensity = smoothstep(radius, radius * 0.5, dist);
+    return half4(color) * half(intensity);
+}
+

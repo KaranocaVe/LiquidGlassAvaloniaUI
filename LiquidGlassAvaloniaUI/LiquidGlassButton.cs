@@ -6,8 +6,10 @@ using System;
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
-    /// 液态玻璃按钮控件 - 完整的鼠标交互响应
+    /// Legacy “liquid glass” button kept for compatibility.
+    /// Prefer <see cref="LiquidGlassSurface"/> for the AndroidLiquidGlass-style pipeline.
     /// </summary>
+    [Obsolete("Use LiquidGlassSurface. This control keeps legacy parameter names and is kept for compatibility.")]
     public class LiquidGlassButton : Control
     {
         #region Avalonia Properties
@@ -220,61 +222,6 @@ namespace LiquidGlassAvaloniaUI
             );
         }
 
-        public LiquidGlassButton()
-        {
-            // 监听所有属性变化并立即重新渲染
-            PropertyChanged += OnPropertyChanged;
-            
-            // 监听DataContext变化，确保绑定生效后立即重新渲染
-            PropertyChanged += (sender, args) =>
-            {
-                if (args.Property == DataContextProperty)
-                {
-                    Console.WriteLine($"[LiquidGlassButton] DataContext changed - forcing re-render");
-                    // 延迟一下确保绑定完全生效
-                    Avalonia.Threading.Dispatcher.UIThread.Post(() => InvalidateVisual(), Avalonia.Threading.DispatcherPriority.Background);
-                }
-            };
-            
-            // 确保控件加载完成后立即重新渲染，以应用正确的初始参数
-            this.Loaded += (sender, e) => 
-            {
-                Console.WriteLine($"[LiquidGlassButton] Loaded event - forcing re-render with current values");
-                InvalidateVisual();
-            };
-            
-            // 在属性系统完全初始化后再次渲染
-            this.AttachedToVisualTree += (sender, e) =>
-            {
-                Console.WriteLine($"[LiquidGlassButton] AttachedToVisualTree - forcing re-render");
-                InvalidateVisual();
-            };
-        }
-
-        private void OnPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
-        {
-            // 强制立即重新渲染
-            if (e.Property == DisplacementScaleProperty ||
-                e.Property == BlurAmountProperty ||
-                e.Property == SaturationProperty ||
-                e.Property == AberrationIntensityProperty ||
-                e.Property == ElasticityProperty ||
-                e.Property == CornerRadiusProperty ||
-                e.Property == ModeProperty ||
-                e.Property == IsHoveredProperty ||
-                e.Property == IsActiveProperty ||
-                e.Property == OverLightProperty ||
-                e.Property == MouseOffsetXProperty ||
-                e.Property == MouseOffsetYProperty ||
-                e.Property == GlobalMouseXProperty ||
-                e.Property == GlobalMouseYProperty ||
-                e.Property == ActivationZoneProperty)
-            {
-                Console.WriteLine($"[LiquidGlassButton] Property {e.Property.Name} changed from {e.OldValue} to {e.NewValue}");
-                InvalidateVisual();
-            }
-        }
-
         #region Mouse Event Handlers
 
         protected override void OnPointerEntered(Avalonia.Input.PointerEventArgs e)
@@ -403,26 +350,31 @@ namespace LiquidGlassAvaloniaUI
 
         public override void Render(DrawingContext context)
         {
+            if (LiquidGlassBackdropProvider.IsCapturing)
+                return;
+
+            LiquidGlassBackdropProvider.EnsureSnapshot(this);
+            var backdropSnapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+
             var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
-            // 创建液态玻璃效果参数
-            var parameters = new LiquidGlassParameters
+            var parameters = new LiquidGlassDrawParameters
             {
-                DisplacementScale = DisplacementScale,
-                BlurAmount = BlurAmount,
-                Saturation = Saturation,
-                AberrationIntensity = AberrationIntensity,
-                Elasticity = Elasticity,
-                CornerRadius = CornerRadius,
-                Mode = Mode,
-                IsHovered = IsHovered,
-                IsActive = IsActive,
-                OverLight = OverLight,
-                MouseOffsetX = MouseOffsetX,
-                MouseOffsetY = MouseOffsetY,
-                GlobalMouseX = GlobalMouseX,
-                GlobalMouseY = GlobalMouseY,
-                ActivationZone = ActivationZone
+                CornerRadius = new CornerRadius(CornerRadius),
+                RefractionHeight = 12.0,
+                RefractionAmount = DisplacementScale,
+                DepthEffect = Mode == LiquidGlassMode.Prominent,
+                ChromaticAberration = AberrationIntensity > 0.001,
+                BlurRadius = BlurAmount,
+                Vibrancy = Saturation / 100.0,
+                TintColor = Colors.Transparent,
+                SurfaceColor = Colors.Transparent,
+                HighlightEnabled = true,
+                HighlightWidth = 0.5,
+                HighlightBlurRadius = 0.25,
+                HighlightOpacity = 0.5,
+                HighlightAngleDegrees = 45.0,
+                HighlightFalloff = 1.0,
             };
 
             // 计算变换
@@ -432,7 +384,8 @@ namespace LiquidGlassAvaloniaUI
             // 应用变换
             using (context.PushTransform(Matrix.CreateScale(scaleX, scaleY) * Matrix.CreateTranslation(translateX, translateY)))
             {
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters));
+                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, backdropSnapshot, LiquidGlassDrawPass.Lens));
+                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
             }
         }
     }

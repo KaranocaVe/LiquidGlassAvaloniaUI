@@ -23,8 +23,10 @@ namespace LiquidGlassAvaloniaUI
     }
 
     /// <summary>
-    /// 液态玻璃控件 - 完全复刻 TypeScript 版本功能
+    /// Legacy “liquid glass” control kept for compatibility.
+    /// Prefer <see cref="LiquidGlassSurface"/> for the AndroidLiquidGlass-style pipeline.
     /// </summary>
+    [Obsolete("Use LiquidGlassSurface. This control keeps legacy parameter names and is kept for compatibility.")]
     public class LiquidGlassControl : Control
     {
         #region Avalonia Properties
@@ -350,26 +352,32 @@ namespace LiquidGlassAvaloniaUI
 
         public override void Render(DrawingContext context)
         {
+            if (LiquidGlassBackdropProvider.IsCapturing)
+                return;
+
+            LiquidGlassBackdropProvider.EnsureSnapshot(this);
+            var backdropSnapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+
             var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
-            // 创建液态玻璃效果参数
-            var parameters = new LiquidGlassParameters
+            // Legacy control: map old property names to AndroidLiquidGlass-style pipeline parameters.
+            var parameters = new LiquidGlassDrawParameters
             {
-                DisplacementScale = DisplacementScale,
-                BlurAmount = BlurAmount,
-                Saturation = Saturation,
-                AberrationIntensity = AberrationIntensity,
-                Elasticity = Elasticity,
-                CornerRadius = CornerRadius,
-                Mode = Mode,
-                IsHovered = IsHovered,
-                IsActive = IsActive,
-                OverLight = OverLight,
-                MouseOffsetX = MouseOffsetX,
-                MouseOffsetY = MouseOffsetY,
-                GlobalMouseX = GlobalMouseX,
-                GlobalMouseY = GlobalMouseY,
-                ActivationZone = ActivationZone
+                CornerRadius = new CornerRadius(CornerRadius),
+                RefractionHeight = 12.0,
+                RefractionAmount = DisplacementScale,
+                DepthEffect = Mode == LiquidGlassMode.Prominent,
+                ChromaticAberration = AberrationIntensity > 0.001,
+                BlurRadius = BlurAmount,
+                Vibrancy = Saturation / 100.0,
+                TintColor = Colors.Transparent,
+                SurfaceColor = Colors.Transparent,
+                HighlightEnabled = true,
+                HighlightWidth = 0.5,
+                HighlightBlurRadius = 0.25,
+                HighlightOpacity = 0.5,
+                HighlightAngleDegrees = 45.0,
+                HighlightFalloff = 1.0,
             };
 
             // 计算变换
@@ -379,30 +387,11 @@ namespace LiquidGlassAvaloniaUI
             // 应用变换
             using (context.PushTransform(Matrix.CreateScale(scaleX, scaleY) * Matrix.CreateTranslation(translateX, translateY)))
             {
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters));
+                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, backdropSnapshot, LiquidGlassDrawPass.Lens));
+                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
             }
         }
     }
 
-    /// <summary>
-    /// 液态玻璃效果参数集合
-    /// </summary>
-    public struct LiquidGlassParameters
-    {
-        public double DisplacementScale { get; set; }
-        public double BlurAmount { get; set; }
-        public double Saturation { get; set; }
-        public double AberrationIntensity { get; set; }
-        public double Elasticity { get; set; }
-        public double CornerRadius { get; set; }
-        public LiquidGlassMode Mode { get; set; }
-        public bool IsHovered { get; set; }
-        public bool IsActive { get; set; }
-        public bool OverLight { get; set; }
-        public double MouseOffsetX { get; set; }
-        public double MouseOffsetY { get; set; }
-        public double GlobalMouseX { get; set; }
-        public double GlobalMouseY { get; set; }
-        public double ActivationZone { get; set; }
-    }
+    // NOTE: The old public LiquidGlassParameters struct was removed as part of the AndroidLiquidGlass-style rewrite.
 }

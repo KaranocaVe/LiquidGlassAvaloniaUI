@@ -1,152 +1,129 @@
-﻿using LiquidGlassAvaloniaUI;
+﻿using System;
+using Avalonia.Media;
 using ReactiveUI;
 
 namespace AvaloniaApplication1.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-    private double _displacementScale = 20.0;
-    private double _blurAmount = 0.0625;
-    private double _saturation = 140.0;
-    private double _aberrationIntensity = 2.0;
-    private double _elasticity = 0.4;
-    private double _cornerRadius = 25.0;
-    private LiquidGlassMode _mode = LiquidGlassMode.Standard;
-    private bool _overLight = false;
+    private double _refractionHeight = 12.0;
+    private double _refractionAmount = 24.0;
+    private double _blurRadius = 2.0;
+    private double _vibrancy = 1.5;
+    private bool _depthEffect;
+    private bool _chromaticAberration;
 
-    public string Greeting { get; } = "Welcome to Avalonia!";
+    private bool _highlightEnabled = true;
+    private double _highlightOpacity = 0.5;
 
-    /// <summary>
-    /// 位移缩放强度 (0-200)
-    /// </summary>
-    public double DisplacementScale
+    private bool _enableTint;
+    private int _tintPresetIndex = 0;
+    private bool _enableSurface;
+    private int _surfacePresetIndex = 0;
+
+    public double RefractionHeight
     {
-        get => _displacementScale;
-        set => this.RaiseAndSetIfChanged(ref _displacementScale, value);
+        get => _refractionHeight;
+        set => this.RaiseAndSetIfChanged(ref _refractionHeight, value);
     }
 
-    /// <summary>
-    /// 模糊量 (0-1)
-    /// </summary>
-    public double BlurAmount
+    public double RefractionAmount
     {
-        get => _blurAmount;
-        set => this.RaiseAndSetIfChanged(ref _blurAmount, value);
+        get => _refractionAmount;
+        set => this.RaiseAndSetIfChanged(ref _refractionAmount, value);
     }
 
-    /// <summary>
-    /// 饱和度 (0-300)
-    /// </summary>
-    public double Saturation
+    public double BlurRadius
     {
-        get => _saturation;
-        set => this.RaiseAndSetIfChanged(ref _saturation, value);
+        get => _blurRadius;
+        set => this.RaiseAndSetIfChanged(ref _blurRadius, value);
     }
 
-    /// <summary>
-    /// 色差强度 (0-10)
-    /// </summary>
-    public double AberrationIntensity
+    public double Vibrancy
     {
-        get => _aberrationIntensity;
-        set => this.RaiseAndSetIfChanged(ref _aberrationIntensity, value);
+        get => _vibrancy;
+        set => this.RaiseAndSetIfChanged(ref _vibrancy, value);
     }
 
-    /// <summary>
-    /// 弹性强度 (0-1) - 仅用于按钮
-    /// </summary>
-    public double Elasticity
+    public bool DepthEffect
     {
-        get => _elasticity;
-        set => this.RaiseAndSetIfChanged(ref _elasticity, value);
+        get => _depthEffect;
+        set => this.RaiseAndSetIfChanged(ref _depthEffect, value);
     }
 
-    /// <summary>
-    /// 圆角半径 (0-50)
-    /// </summary>
-    public double CornerRadius
+    public bool ChromaticAberration
     {
-        get => _cornerRadius;
-        set => this.RaiseAndSetIfChanged(ref _cornerRadius, value);
+        get => _chromaticAberration;
+        set => this.RaiseAndSetIfChanged(ref _chromaticAberration, value);
     }
 
-    /// <summary>
-    /// 液态玻璃模式
-    /// </summary>
-    public LiquidGlassMode Mode
+    public bool HighlightEnabled
     {
-        get => _mode;
-        set 
+        get => _highlightEnabled;
+        set => this.RaiseAndSetIfChanged(ref _highlightEnabled, value);
+    }
+
+    public double HighlightOpacity
+    {
+        get => _highlightOpacity;
+        set => this.RaiseAndSetIfChanged(ref _highlightOpacity, value);
+    }
+
+    public bool EnableTint
+    {
+        get => _enableTint;
+        set
         {
-            var oldValue = _mode;
-            this.RaiseAndSetIfChanged(ref _mode, value);
-            if (oldValue != _mode)
-            {
-                // 当Mode改变时，也要通知ModeIndex改变
-                this.RaisePropertyChanged(nameof(ModeIndex));
-            }
+            this.RaiseAndSetIfChanged(ref _enableTint, value);
+            this.RaisePropertyChanged(nameof(TintColor));
         }
     }
 
-    /// <summary>
-    /// 模式索引 - 用于ComboBox绑定
-    /// </summary>
-    public int ModeIndex
+    public int TintPresetIndex
     {
-        get => (int)_mode;
-        set 
-        { 
-            var newMode = (LiquidGlassMode)value;
-            if (_mode != newMode)
-            {
-                _mode = newMode;
-                this.RaisePropertyChanged(nameof(Mode));
-                this.RaisePropertyChanged(nameof(ModeIndex));
-            }
+        get => _tintPresetIndex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _tintPresetIndex, value);
+            this.RaisePropertyChanged(nameof(TintColor));
         }
     }
 
-    /// <summary>
-    /// 是否在亮色背景上
-    /// </summary>
-    public bool OverLight
+    public Color TintColor => EnableTint ? TintPresets[Math.Clamp(TintPresetIndex, 0, TintPresets.Length - 1)] : Colors.Transparent;
+
+    public bool EnableSurface
     {
-        get => _overLight;
-        set => this.RaiseAndSetIfChanged(ref _overLight, value);
+        get => _enableSurface;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _enableSurface, value);
+            this.RaisePropertyChanged(nameof(SurfaceColor));
+        }
     }
 
-    #region 悬浮拖拽卡片属性
-
-    private double _floatingCardX = 50.0;
-    private double _floatingCardY = 50.0;
-    private bool _showFloatingCard = true;
-
-    /// <summary>
-    /// 悬浮卡片X位置
-    /// </summary>
-    public double FloatingCardX
+    public int SurfacePresetIndex
     {
-        get => _floatingCardX;
-        set => this.RaiseAndSetIfChanged(ref _floatingCardX, value);
+        get => _surfacePresetIndex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _surfacePresetIndex, value);
+            this.RaisePropertyChanged(nameof(SurfaceColor));
+        }
     }
 
-    /// <summary>
-    /// 悬浮卡片Y位置
-    /// </summary>
-    public double FloatingCardY
-    {
-        get => _floatingCardY;
-        set => this.RaiseAndSetIfChanged(ref _floatingCardY, value);
-    }
+    public Color SurfaceColor => EnableSurface ? SurfacePresets[Math.Clamp(SurfacePresetIndex, 0, SurfacePresets.Length - 1)] : Colors.Transparent;
 
-    /// <summary>
-    /// 是否显示悬浮卡片
-    /// </summary>
-    public bool ShowFloatingCard
+    private static readonly Color[] TintPresets =
     {
-        get => _showFloatingCard;
-        set => this.RaiseAndSetIfChanged(ref _showFloatingCard, value);
-    }
+        Color.FromRgb(0, 136, 255),   // blue
+        Color.FromRgb(255, 0, 122),   // pink
+        Color.FromRgb(0, 200, 160),   // teal
+        Color.FromRgb(255, 141, 40),  // amber (Android catalog: 0xFFFF8D28)
+    };
 
-    #endregion
+    private static readonly Color[] SurfacePresets =
+    {
+        Color.FromArgb(77, 255, 255, 255), // ~0.3
+        Color.FromArgb(77, 0, 0, 0),
+    };
 }

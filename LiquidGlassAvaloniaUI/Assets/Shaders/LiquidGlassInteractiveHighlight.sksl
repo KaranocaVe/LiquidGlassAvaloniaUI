@@ -9,6 +9,8 @@ uniform float2 position;
 half4 main(float2 coord) {
     float dist = distance(coord, position);
     float intensity = smoothstep(radius, radius * 0.5, dist);
-    return half4(color) * half(intensity);
+    // Skia expects premultiplied output colors.
+    half a = half(color.a * intensity);
+    half3 rgb = half3(color.rgb) * a;
+    return half4(rgb, a);
 }
-

@@ -1,0 +1,33 @@
+// Liquid Glass Vibrancy Shader (saturation)
+// Mirrors AndroidLiquidGlass' vibrancy() color matrix (saturation=1.5 by default),
+// implemented as a lightweight SKRuntimeEffect stage so it can be chained before blur+lens.
+
+uniform shader content;
+uniform float saturation;
+
+half4 main(float2 coord) {
+    half4 c = content.eval(coord);
+
+    half a = c.a;
+    if (a <= half(0.0001)) {
+        return half4(0.0);
+    }
+
+    // Work in unpremultiplied space for correct saturation adjustment.
+    float invA = 1.0 / max(float(a), 0.000001);
+    float3 rgb = float3(c.rgb) * invA;
+
+    float s = saturation;
+    float invSat = 1.0 - s;
+    float r = 0.213 * invSat;
+    float g = 0.715 * invSat;
+    float b = 0.072 * invSat;
+
+    float3 outRgb;
+    outRgb.r = (r + s) * rgb.r + g * rgb.g + b * rgb.b;
+    outRgb.g = r * rgb.r + (g + s) * rgb.g + b * rgb.b;
+    outRgb.b = r * rgb.r + g * rgb.g + (b + s) * rgb.b;
+
+    outRgb = clamp(outRgb, 0.0, 1.0);
+    return half4(half3(outRgb) * a, a);
+}

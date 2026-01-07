@@ -46,5 +46,8 @@ half4 main(float2 coord) {
 
     float d = dot(grad, normal);
     float intensity = pow(abs(d), max(falloff, 0.0));
-    return half4(color) * half(intensity);
+    // Skia expects premultiplied output colors.
+    half a = half(color.a * intensity);
+    half3 rgb = half3(color.rgb) * a;
+    return half4(rgb, a);
 }

@@ -1,5 +1,6 @@
-// Liquid Glass Blur Shader (simple 9-tap blur)
-// Used to approximate Android's RenderEffect blur stage before the lens refraction.
+// Liquid Glass Blur Shader (Gaussian-ish 5x5)
+// AndroidLiquidGlass uses RenderEffect.createBlurEffect (Gaussian blur). This shader approximates
+// that with a 5x5 separable Gaussian kernel (Pascal weights) in a single pass.
 
 uniform shader content;
 
@@ -12,21 +13,50 @@ half4 main(float2 coord) {
         return content.eval(coord);
     }
 
-    float2 o = float2(r, r);
+    // 1D kernel weights (normalized): [1, 4, 6, 4, 1] / 16
+    const float w0 = 0.0625;  // 1/16
+    const float w1 = 0.25;    // 4/16
+    const float w2 = 0.375;   // 6/16
 
-    half4 c = half4(0.0);
-    c += content.eval(coord) * 0.25;
+    float2 dx = float2(r, 0.0);
+    float2 dy = float2(0.0, r);
 
-    c += content.eval(coord + float2(o.x, 0.0)) * 0.125;
-    c += content.eval(coord - float2(o.x, 0.0)) * 0.125;
-    c += content.eval(coord + float2(0.0, o.y)) * 0.125;
-    c += content.eval(coord - float2(0.0, o.y)) * 0.125;
+    half4 sum = half4(0.0);
 
-    c += content.eval(coord + o) * 0.0625;
-    c += content.eval(coord + float2(o.x, -o.y)) * 0.0625;
-    c += content.eval(coord + float2(-o.x, o.y)) * 0.0625;
-    c += content.eval(coord - o) * 0.0625;
+    // y = -2
+    sum += content.eval(coord - 2.0 * dy - 2.0 * dx) * (w0 * w0);
+    sum += content.eval(coord - 2.0 * dy - 1.0 * dx) * (w1 * w0);
+    sum += content.eval(coord - 2.0 * dy) * (w2 * w0);
+    sum += content.eval(coord - 2.0 * dy + 1.0 * dx) * (w1 * w0);
+    sum += content.eval(coord - 2.0 * dy + 2.0 * dx) * (w0 * w0);
 
-    return c;
+    // y = -1
+    sum += content.eval(coord - 1.0 * dy - 2.0 * dx) * (w0 * w1);
+    sum += content.eval(coord - 1.0 * dy - 1.0 * dx) * (w1 * w1);
+    sum += content.eval(coord - 1.0 * dy) * (w2 * w1);
+    sum += content.eval(coord - 1.0 * dy + 1.0 * dx) * (w1 * w1);
+    sum += content.eval(coord - 1.0 * dy + 2.0 * dx) * (w0 * w1);
+
+    // y = 0
+    sum += content.eval(coord - 2.0 * dx) * (w0 * w2);
+    sum += content.eval(coord - 1.0 * dx) * (w1 * w2);
+    sum += content.eval(coord) * (w2 * w2);
+    sum += content.eval(coord + 1.0 * dx) * (w1 * w2);
+    sum += content.eval(coord + 2.0 * dx) * (w0 * w2);
+
+    // y = +1
+    sum += content.eval(coord + 1.0 * dy - 2.0 * dx) * (w0 * w1);
+    sum += content.eval(coord + 1.0 * dy - 1.0 * dx) * (w1 * w1);
+    sum += content.eval(coord + 1.0 * dy) * (w2 * w1);
+    sum += content.eval(coord + 1.0 * dy + 1.0 * dx) * (w1 * w1);
+    sum += content.eval(coord + 1.0 * dy + 2.0 * dx) * (w0 * w1);
+
+    // y = +2
+    sum += content.eval(coord + 2.0 * dy - 2.0 * dx) * (w0 * w0);
+    sum += content.eval(coord + 2.0 * dy - 1.0 * dx) * (w1 * w0);
+    sum += content.eval(coord + 2.0 * dy) * (w2 * w0);
+    sum += content.eval(coord + 2.0 * dy + 1.0 * dx) * (w1 * w0);
+    sum += content.eval(coord + 2.0 * dy + 2.0 * dx) * (w0 * w0);
+
+    return sum;
 }
-

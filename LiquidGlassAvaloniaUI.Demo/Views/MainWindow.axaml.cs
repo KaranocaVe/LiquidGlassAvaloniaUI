@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -17,6 +18,8 @@ public partial class MainWindow : Window
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
+
+        this.AttachDevTools();
     }
 
     private void OnPrimaryLiquidButtonClick(object? sender, RoutedEventArgs e)

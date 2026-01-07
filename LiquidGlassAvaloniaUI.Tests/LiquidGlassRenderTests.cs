@@ -57,6 +57,19 @@ public class LiquidGlassRenderTests
     }
 
     [AvaloniaFact]
+    public void Vibrancy_shader_compiles()
+    {
+        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassVibrancy.sksl");
+        using var stream = AssetLoader.Open(assetUri);
+        using var reader = new StreamReader(stream);
+        var shaderCode = reader.ReadToEnd();
+
+        var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+        Assert.True(effect is not null, $"Failed to compile LiquidGlassVibrancy.sksl: {errorText}");
+        effect!.Dispose();
+    }
+
+    [AvaloniaFact]
     public void Interactive_highlight_shader_compiles()
     {
         var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
@@ -67,6 +80,50 @@ public class LiquidGlassRenderTests
         var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
         Assert.True(effect is not null, $"Failed to compile LiquidGlassInteractiveHighlight.sksl: {errorText}");
         effect!.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void Interactive_highlight_plus_blend_is_not_full_white()
+    {
+        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
+        using var stream = AssetLoader.Open(assetUri);
+        using var reader = new StreamReader(stream);
+        var shaderCode = reader.ReadToEnd();
+
+        using var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+        Assert.True(effect is not null, $"Failed to compile LiquidGlassInteractiveHighlight.sksl: {errorText}");
+
+        var info = new SKImageInfo(64, 64, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using var surface = SKSurface.Create(info);
+        Assert.NotNull(surface);
+
+        var canvas = surface!.Canvas;
+        canvas.Clear(new SKColor(0, 0, 0, 255));
+
+        using var uniforms = new SKRuntimeEffectUniforms(effect!);
+        uniforms["size"] = new[] { 64f, 64f };
+        uniforms["color"] = new[] { 1f, 1f, 1f, 0.15f };
+        uniforms["radius"] = 96f;
+        uniforms["position"] = new[] { 32f, 32f };
+
+        using var children = new SKRuntimeEffectChildren(effect!);
+        using var shader = effect!.ToShader(uniforms, children);
+        Assert.NotNull(shader);
+
+        using var paint = new SKPaint
+        {
+            Shader = shader,
+            BlendMode = SKBlendMode.Plus
+        };
+
+        canvas.DrawRect(SKRect.Create(0, 0, 64, 64), paint);
+
+        using var snapshot = surface.Snapshot();
+        using var bitmap = new SKBitmap(info);
+        Assert.True(snapshot.ReadPixels(info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0));
+
+        var c = bitmap.GetPixel(32, 32);
+        Assert.True(c.Red < 128, $"Expected subtle additive highlight (<128) but got R={c.Red}, A={c.Alpha}");
     }
 
     [AvaloniaFact]
@@ -532,6 +589,7 @@ public class LiquidGlassRenderTests
 
         var glass = new LiquidGlassInteractiveSurface
         {
+            IsInteractive = false,
             Width = 220,
             Height = 140,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -609,13 +667,123 @@ public class LiquidGlassRenderTests
 
         try
         {
+            // Ensure the visual tree is laid out before we convert positions.
+            _ = window.CaptureRenderedFrame();
+
+            using var pointer = new Avalonia.Input.Pointer(Avalonia.Input.Pointer.GetNextFreeId(), Avalonia.Input.PointerType.Mouse, true);
+
             var center = new Point(window.Width / 2, window.Height / 2);
 
-            window.MouseMove(center);
-            window.MouseDown(center, Avalonia.Input.MouseButton.Left);
-            window.MouseMove(new Point(center.X + 40, center.Y + 8));
+            var pressedProps = new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, Avalonia.Input.PointerUpdateKind.LeftButtonPressed);
+            glass.RaiseEvent(new Avalonia.Input.PointerPressedEventArgs(
+                source: glass,
+                pointer: pointer,
+                rootVisual: window,
+                rootVisualPosition: center,
+                timestamp: 0,
+                properties: pressedProps,
+                modifiers: Avalonia.Input.KeyModifiers.None,
+                clickCount: 1));
+
+            var movedProps = new Avalonia.Input.PointerPointProperties(Avalonia.Input.RawInputModifiers.LeftMouseButton, Avalonia.Input.PointerUpdateKind.Other);
+            window.RaiseEvent(new Avalonia.Input.PointerEventArgs(
+                Avalonia.Input.InputElement.PointerMovedEvent,
+                source: window,
+                pointer: pointer,
+                rootVisual: window,
+                rootVisualPosition: new Point(center.X + 40, center.Y + 8),
+                timestamp: 1,
+                properties: movedProps,
+                modifiers: Avalonia.Input.KeyModifiers.None));
 
             Assert.NotNull(glass.RenderTransform);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void LiquidGlass_highlight_corner_is_visible_under_render_transform()
+    {
+        var root = new Grid
+        {
+            Background = Brushes.Black
+        };
+
+        var glass = new LiquidGlassInteractiveSurface
+        {
+            IsInteractive = false,
+            Width = 220,
+            Height = 140,
+            Margin = new Thickness(40),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            CornerRadius = new CornerRadius(40),
+            RefractionHeight = 0,
+            RefractionAmount = 0,
+            BlurRadius = 0,
+            Vibrancy = 1,
+            HighlightEnabled = true,
+            HighlightOpacity = 1,
+            HighlightWidth = 3,
+            HighlightBlurRadius = 3,
+            HighlightAngle = 45,
+            HighlightFalloff = 1,
+            Child = new Border
+            {
+                Background = Brushes.Transparent
+            }
+        };
+
+        root.Children.Add(glass);
+
+        var window = new Window
+        {
+            Width = 480,
+            Height = 320,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+
+            glass.RenderTransform = new MatrixTransform(Matrix.CreateScale(1.08, 1.04));
+
+            var frame = window.CaptureRenderedFrame();
+            Assert.NotNull(frame);
+
+            var r = glass.CornerRadius.TopLeft;
+            var cornerLocal = new Point(r * 0.35, r * 0.35);
+            var topEdgeLocal = new Point(glass.Bounds.Width / 2, 2);
+            var leftEdgeLocal = new Point(2, glass.Bounds.Height / 2);
+            var centerLocal = new Point(glass.Bounds.Width / 2, glass.Bounds.Height / 2);
+
+            var corner = glass.TranslatePoint(cornerLocal, window);
+            var topEdge = glass.TranslatePoint(topEdgeLocal, window);
+            var leftEdge = glass.TranslatePoint(leftEdgeLocal, window);
+            var center = glass.TranslatePoint(centerLocal, window);
+
+            Assert.True(corner.HasValue && topEdge.HasValue && leftEdge.HasValue && center.HasValue);
+
+            var cCorner = GetPixel(frame!, (int)Math.Round(corner!.Value.X), (int)Math.Round(corner!.Value.Y));
+            var cTop = GetPixel(frame!, (int)Math.Round(topEdge!.Value.X), (int)Math.Round(topEdge!.Value.Y));
+            var cLeft = GetPixel(frame!, (int)Math.Round(leftEdge!.Value.X), (int)Math.Round(leftEdge!.Value.Y));
+            var cCenter = GetPixel(frame!, (int)Math.Round(center!.Value.X), (int)Math.Round(center!.Value.Y));
+
+            var lCorner = cCorner.r + cCorner.g + cCorner.b;
+            var lTop = cTop.r + cTop.g + cTop.b;
+            var lLeft = cLeft.r + cLeft.g + cLeft.b;
+            var lCenter = cCenter.r + cCenter.g + cCenter.b;
+
+            Assert.True(lCorner > lCenter + 10, $"Expected corner highlight to exceed center (corner={lCorner}, center={lCenter}).");
+            Assert.True(lCorner >= Math.Min(lTop, lLeft) * 0.6, $"Expected corner highlight to be comparable to edges (corner={lCorner}, top={lTop}, left={lLeft}).");
+
+            MaybeSave(frame!, "highlight-transform.png");
         }
         finally
         {

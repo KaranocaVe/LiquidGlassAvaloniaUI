@@ -26,7 +26,7 @@
                            FontSize="28"
                            FontWeight="Bold"
                            Foreground="White" />
-                <TextBlock Text="AndroidLiquidGlass pipeline: vibrancy → blur → lens → highlight"
+                <TextBlock Text="AndroidLiquidGlass pipeline: shadow → color → blur → lens → gamma → surface → highlight"
                            FontSize="12"
                            Foreground="#CCFFFFFF" />
             </StackPanel>
@@ -49,10 +49,29 @@
                                               ChromaticAberration="{Binding ChromaticAberration}"
                                               BlurRadius="{Binding BlurRadius}"
                                               Vibrancy="{Binding Vibrancy}"
+                                              Brightness="{Binding Brightness}"
+                                              Contrast="{Binding Contrast}"
+                                              ExposureEv="{Binding ExposureEv}"
+                                              GammaPower="{Binding GammaPower}"
+                                              BackdropOpacity="{Binding BackdropOpacity}"
                                               TintColor="{Binding TintColor}"
                                               SurfaceColor="{Binding SurfaceColor}"
                                               HighlightEnabled="{Binding HighlightEnabled}"
-                                              HighlightOpacity="{Binding HighlightOpacity}">
+                                              HighlightWidth="{Binding HighlightWidth}"
+                                              HighlightBlurRadius="{Binding HighlightBlurRadius}"
+                                              HighlightOpacity="{Binding HighlightOpacity}"
+                                              HighlightAngle="{Binding HighlightAngle}"
+                                              HighlightFalloff="{Binding HighlightFalloff}"
+                                              ShadowEnabled="{Binding ShadowEnabled}"
+                                              ShadowRadius="{Binding ShadowRadius}"
+                                              ShadowOffset="{Binding ShadowOffset}"
+                                              ShadowColor="{Binding ShadowColor}"
+                                              ShadowOpacity="{Binding ShadowOpacity}"
+                                              InnerShadowEnabled="{Binding InnerShadowEnabled}"
+                                              InnerShadowRadius="{Binding InnerShadowRadius}"
+                                              InnerShadowOffset="{Binding InnerShadowOffset}"
+                                              InnerShadowColor="{Binding InnerShadowColor}"
+                                              InnerShadowOpacity="{Binding InnerShadowOpacity}">
                         <Grid Margin="22"
                               RowDefinitions="Auto,Auto,*,Auto"
                               ColumnDefinitions="*,Auto"
@@ -139,10 +158,32 @@
                                                                      ChromaticAberration="{Binding ChromaticAberration}"
                                                                      BlurRadius="{Binding BlurRadius}"
                                                                      Vibrancy="{Binding Vibrancy}"
+                                                                     Brightness="{Binding Brightness}"
+                                                                     Contrast="{Binding Contrast}"
+                                                                     ExposureEv="{Binding ExposureEv}"
+                                                                     GammaPower="{Binding GammaPower}"
+                                                                     BackdropOpacity="{Binding BackdropOpacity}"
                                                                      TintColor="{Binding TintColor}"
                                                                      SurfaceColor="{Binding SurfaceColor}"
                                                                      HighlightEnabled="{Binding HighlightEnabled}"
-                                                                     HighlightOpacity="{Binding HighlightOpacity}">
+                                                                     HighlightWidth="{Binding HighlightWidth}"
+                                                                     HighlightBlurRadius="{Binding HighlightBlurRadius}"
+                                                                     HighlightOpacity="{Binding HighlightOpacity}"
+                                                                     HighlightAngle="{Binding HighlightAngle}"
+                                                                     HighlightFalloff="{Binding HighlightFalloff}"
+                                                                     ShadowEnabled="{Binding ShadowEnabled}"
+                                                                     ShadowRadius="{Binding ShadowRadius}"
+                                                                     ShadowOffset="{Binding ShadowOffset}"
+                                                                     ShadowColor="{Binding ShadowColor}"
+                                                                     ShadowOpacity="{Binding ShadowOpacity}"
+                                                                     InnerShadowEnabled="{Binding InnerShadowEnabled}"
+                                                                     InnerShadowRadius="{Binding InnerShadowRadius}"
+                                                                     InnerShadowOffset="{Binding InnerShadowOffset}"
+                                                                     InnerShadowColor="{Binding InnerShadowColor}"
+                                                                     InnerShadowOpacity="{Binding InnerShadowOpacity}"
+                                                                     IsInteractive="{Binding IsInteractive}"
+                                                                     InteractiveHighlightEnabled="{Binding InteractiveHighlightEnabled}"
+                                                                     InteractiveMaxScaleDip="{Binding InteractiveMaxScaleDip}">
                                     <Button Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
@@ -167,10 +208,32 @@
                                                                      ChromaticAberration="{Binding ChromaticAberration}"
                                                                      BlurRadius="{Binding BlurRadius}"
                                                                      Vibrancy="{Binding Vibrancy}"
+                                                                     Brightness="{Binding Brightness}"
+                                                                     Contrast="{Binding Contrast}"
+                                                                     ExposureEv="{Binding ExposureEv}"
+                                                                     GammaPower="{Binding GammaPower}"
+                                                                     BackdropOpacity="{Binding BackdropOpacity}"
                                                                      TintColor="{Binding TintColor}"
                                                                      SurfaceColor="{Binding SurfaceColor}"
                                                                      HighlightEnabled="{Binding HighlightEnabled}"
-                                                                     HighlightOpacity="{Binding HighlightOpacity}">
+                                                                     HighlightWidth="{Binding HighlightWidth}"
+                                                                     HighlightBlurRadius="{Binding HighlightBlurRadius}"
+                                                                     HighlightOpacity="{Binding HighlightOpacity}"
+                                                                     HighlightAngle="{Binding HighlightAngle}"
+                                                                     HighlightFalloff="{Binding HighlightFalloff}"
+                                                                     ShadowEnabled="{Binding ShadowEnabled}"
+                                                                     ShadowRadius="{Binding ShadowRadius}"
+                                                                     ShadowOffset="{Binding ShadowOffset}"
+                                                                     ShadowColor="{Binding ShadowColor}"
+                                                                     ShadowOpacity="{Binding ShadowOpacity}"
+                                                                     InnerShadowEnabled="{Binding InnerShadowEnabled}"
+                                                                     InnerShadowRadius="{Binding InnerShadowRadius}"
+                                                                     InnerShadowOffset="{Binding InnerShadowOffset}"
+                                                                     InnerShadowColor="{Binding InnerShadowColor}"
+                                                                     InnerShadowOpacity="{Binding InnerShadowOpacity}"
+                                                                     IsInteractive="{Binding IsInteractive}"
+                                                                     InteractiveHighlightEnabled="{Binding InteractiveHighlightEnabled}"
+                                                                     InteractiveMaxScaleDip="{Binding InteractiveMaxScaleDip}">
                                     <Button Background="Transparent"
                                             BorderThickness="0"
                                             Padding="0"
@@ -197,7 +260,7 @@
                                        FontSize="13"
                                        FontWeight="SemiBold"
                                        Foreground="White" />
-                            <TextBlock Text="Vibrancy=1.5, Blur=2, RefractionHeight=12, RefractionAmount=24, Highlight=0.5 @ 45°"
+                            <TextBlock Text="Vibrancy=1.5 · Blur=2 · Lens=12/24 · Shadow=24@(0,4) · Highlight=0.5/0.25@45°"
                                        FontSize="11"
                                        Foreground="#B3FFFFFF"
                                        TextWrapping="Wrap" />
@@ -221,7 +284,7 @@
                                    Foreground="White" />
 
                         <Grid ColumnDefinitions="150,*,70"
-                              RowDefinitions="Auto,Auto,Auto,Auto"
+                              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
                               RowSpacing="10"
                               ColumnSpacing="10">
                             <TextBlock Grid.Row="0"
@@ -266,7 +329,7 @@
                             <Slider Grid.Row="2"
                                     Grid.Column="1"
                                     Minimum="0"
-                                    Maximum="12"
+                                    Maximum="32"
                                     Value="{Binding BlurRadius}" />
                             <TextBlock Grid.Row="2"
                                        Grid.Column="2"
@@ -277,17 +340,102 @@
 
                             <TextBlock Grid.Row="3"
                                        Grid.Column="0"
-                                       Text="Vibrancy"
+                                       Text="Saturation"
                                        Foreground="White"
                                        VerticalAlignment="Center" />
                             <Slider Grid.Row="3"
                                     Grid.Column="1"
-                                    Minimum="0"
+                                    Minimum="0.5"
                                     Maximum="2.5"
                                     Value="{Binding Vibrancy}" />
                             <TextBlock Grid.Row="3"
                                        Grid.Column="2"
                                        Text="{Binding Vibrancy, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" />
+
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="0"
+                                       Text="Brightness"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <Slider Grid.Row="4"
+                                    Grid.Column="1"
+                                    Minimum="-0.5"
+                                    Maximum="0.5"
+                                    Value="{Binding Brightness}" />
+                            <TextBlock Grid.Row="4"
+                                       Grid.Column="2"
+                                       Text="{Binding Brightness, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" />
+
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="0"
+                                       Text="Contrast"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <Slider Grid.Row="5"
+                                    Grid.Column="1"
+                                    Minimum="0"
+                                    Maximum="2"
+                                    Value="{Binding Contrast}" />
+                            <TextBlock Grid.Row="5"
+                                       Grid.Column="2"
+                                       Text="{Binding Contrast, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" />
+
+                            <TextBlock Grid.Row="6"
+                                       Grid.Column="0"
+                                       Text="Exposure (EV)"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <Slider Grid.Row="6"
+                                    Grid.Column="1"
+                                    Minimum="-2"
+                                    Maximum="2"
+                                    Value="{Binding ExposureEv}" />
+                            <TextBlock Grid.Row="6"
+                                       Grid.Column="2"
+                                       Text="{Binding ExposureEv, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" />
+
+                            <TextBlock Grid.Row="7"
+                                       Grid.Column="0"
+                                       Text="Gamma"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <Slider Grid.Row="7"
+                                    Grid.Column="1"
+                                    Minimum="0.5"
+                                    Maximum="2.5"
+                                    Value="{Binding GammaPower}" />
+                            <TextBlock Grid.Row="7"
+                                       Grid.Column="2"
+                                       Text="{Binding GammaPower, StringFormat='{}{0:F2}'}"
+                                       Foreground="White"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Right" />
+
+                            <TextBlock Grid.Row="8"
+                                       Grid.Column="0"
+                                       Text="BackdropOpacity"
+                                       Foreground="White"
+                                       VerticalAlignment="Center" />
+                            <Slider Grid.Row="8"
+                                    Grid.Column="1"
+                                    Minimum="0"
+                                    Maximum="1"
+                                    Value="{Binding BackdropOpacity}" />
+                            <TextBlock Grid.Row="8"
+                                       Grid.Column="2"
+                                       Text="{Binding BackdropOpacity, StringFormat='{}{0:F2}'}"
                                        Foreground="White"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Right" />
@@ -316,18 +464,303 @@
                                           Foreground="White" />
 
                                 <Grid ColumnDefinitions="120,*,70"
+                                      RowDefinitions="Auto,Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="10"
+                                      RowSpacing="10">
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="0"
+                                               Text="Opacity"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="0"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="1"
+                                            Value="{Binding HighlightOpacity}" />
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="2"
+                                               Text="{Binding HighlightOpacity, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="0"
+                                               Text="Width"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="1"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="6"
+                                            Value="{Binding HighlightWidth}" />
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="2"
+                                               Text="{Binding HighlightWidth, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="0"
+                                               Text="Blur"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="2"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="6"
+                                            Value="{Binding HighlightBlurRadius}" />
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="2"
+                                               Text="{Binding HighlightBlurRadius, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="0"
+                                               Text="Angle"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="3"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="360"
+                                            Value="{Binding HighlightAngle}" />
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="2"
+                                               Text="{Binding HighlightAngle, StringFormat='{}{0:F0}°'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="4"
+                                               Grid.Column="0"
+                                               Text="Falloff"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="4"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="4"
+                                            Value="{Binding HighlightFalloff}" />
+                                    <TextBlock Grid.Row="4"
+                                               Grid.Column="2"
+                                               Text="{Binding HighlightFalloff, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#26FFFFFF"
+                                CornerRadius="12"
+                                Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Shadow"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+
+                                <CheckBox Content="Enabled"
+                                          IsChecked="{Binding ShadowEnabled}"
+                                          Foreground="White" />
+
+                                <Grid ColumnDefinitions="120,*,70"
+                                      RowDefinitions="Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="10"
+                                      RowSpacing="10">
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="0"
+                                               Text="Radius"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="0"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="64"
+                                            Value="{Binding ShadowRadius}" />
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="2"
+                                               Text="{Binding ShadowRadius, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="0"
+                                               Text="OffsetX"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="1"
+                                            Grid.Column="1"
+                                            Minimum="-32"
+                                            Maximum="32"
+                                            Value="{Binding ShadowOffsetX}" />
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="2"
+                                               Text="{Binding ShadowOffsetX, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="0"
+                                               Text="OffsetY"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="2"
+                                            Grid.Column="1"
+                                            Minimum="-32"
+                                            Maximum="64"
+                                            Value="{Binding ShadowOffsetY}" />
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="2"
+                                               Text="{Binding ShadowOffsetY, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="0"
+                                               Text="Opacity"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="3"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="1"
+                                            Value="{Binding ShadowOpacity}" />
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="2"
+                                               Text="{Binding ShadowOpacity, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#26FFFFFF"
+                                CornerRadius="12"
+                                Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Inner Shadow"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+
+                                <CheckBox Content="Enabled"
+                                          IsChecked="{Binding InnerShadowEnabled}"
+                                          Foreground="White" />
+
+                                <Grid ColumnDefinitions="120,*,70"
+                                      RowDefinitions="Auto,Auto,Auto,Auto"
+                                      ColumnSpacing="10"
+                                      RowSpacing="10">
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="0"
+                                               Text="Radius"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="0"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="64"
+                                            Value="{Binding InnerShadowRadius}" />
+                                    <TextBlock Grid.Row="0"
+                                               Grid.Column="2"
+                                               Text="{Binding InnerShadowRadius, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="0"
+                                               Text="OffsetX"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="1"
+                                            Grid.Column="1"
+                                            Minimum="-32"
+                                            Maximum="32"
+                                            Value="{Binding InnerShadowOffsetX}" />
+                                    <TextBlock Grid.Row="1"
+                                               Grid.Column="2"
+                                               Text="{Binding InnerShadowOffsetX, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="0"
+                                               Text="OffsetY"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="2"
+                                            Grid.Column="1"
+                                            Minimum="-32"
+                                            Maximum="64"
+                                            Value="{Binding InnerShadowOffsetY}" />
+                                    <TextBlock Grid.Row="2"
+                                               Grid.Column="2"
+                                               Text="{Binding InnerShadowOffsetY, StringFormat='{}{0:F0}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="0"
+                                               Text="Opacity"
+                                               Foreground="White"
+                                               VerticalAlignment="Center" />
+                                    <Slider Grid.Row="3"
+                                            Grid.Column="1"
+                                            Minimum="0"
+                                            Maximum="1"
+                                            Value="{Binding InnerShadowOpacity}" />
+                                    <TextBlock Grid.Row="3"
+                                               Grid.Column="2"
+                                               Text="{Binding InnerShadowOpacity, StringFormat='{}{0:F2}'}"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Right" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#26FFFFFF"
+                                CornerRadius="12"
+                                Padding="12">
+                            <StackPanel Spacing="10">
+                                <TextBlock Text="Interactive"
+                                           FontSize="13"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+
+                                <CheckBox Content="Enabled"
+                                          IsChecked="{Binding IsInteractive}"
+                                          Foreground="White" />
+
+                                <CheckBox Content="Interactive highlight"
+                                          IsChecked="{Binding InteractiveHighlightEnabled}"
+                                          Foreground="White" />
+
+                                <Grid ColumnDefinitions="120,*,70"
                                       RowDefinitions="Auto"
                                       ColumnSpacing="10">
                                     <TextBlock Grid.Column="0"
-                                               Text="Opacity"
+                                               Text="MaxScale (DIP)"
                                                Foreground="White"
                                                VerticalAlignment="Center" />
                                     <Slider Grid.Column="1"
                                             Minimum="0"
-                                            Maximum="1"
-                                            Value="{Binding HighlightOpacity}" />
+                                            Maximum="12"
+                                            Value="{Binding InteractiveMaxScaleDip}" />
                                     <TextBlock Grid.Column="2"
-                                               Text="{Binding HighlightOpacity, StringFormat='{}{0:F2}'}"
+                                               Text="{Binding InteractiveMaxScaleDip, StringFormat='{}{0:F1}'}"
                                                Foreground="White"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Right" />

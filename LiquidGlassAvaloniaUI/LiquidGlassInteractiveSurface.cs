@@ -70,6 +70,7 @@ namespace LiquidGlassAvaloniaUI
 
                 ApplyDeformation();
                 InvalidateVisual();
+                InteractiveOverlay?.InvalidateVisual();
 
                 if (!any)
                     _animationTimer.Stop();
@@ -125,6 +126,7 @@ namespace LiquidGlassAvaloniaUI
             HookTopLevel();
             ApplyDeformation();
             InvalidateVisual();
+            InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
 
@@ -137,6 +139,7 @@ namespace LiquidGlassAvaloniaUI
             _position.SnapTo(p);
             ApplyDeformation();
             InvalidateVisual();
+            InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
 
@@ -166,6 +169,7 @@ namespace LiquidGlassAvaloniaUI
             _position.Target = _startPosition;
             ApplyDeformation();
             InvalidateVisual();
+            InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
 
@@ -248,47 +252,26 @@ namespace LiquidGlassAvaloniaUI
                 RenderTransform = new MatrixTransform(Matrix.CreateScale(sx, sy) * Matrix.CreateTranslation(tx, ty));
         }
 
-        public override void Render(DrawingContext context)
+        internal double GetInteractiveHighlightProgress()
         {
-            if (LiquidGlassBackdropProvider.IsCapturing)
-                return;
+            if (!IsInteractive || !InteractiveHighlightEnabled)
+                return 0.0;
 
-            if (Bounds.Width <= 0 || Bounds.Height <= 0)
-                return;
+            return Clamp(_pressProgress.Value, 0.0, 1.0);
+        }
 
-            LiquidGlassBackdropProvider.EnsureSnapshot(this);
-            var snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+        internal Point GetInteractiveHighlightPosition() => _position.Value;
 
-            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-            var parameters = new LiquidGlassDrawParameters
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+
+            if (change.Property == IsInteractiveProperty
+                || change.Property == InteractiveHighlightEnabledProperty
+                || change.Property == InteractiveMaxScaleDipProperty)
             {
-                CornerRadius = CornerRadius,
-                RefractionHeight = RefractionHeight,
-                RefractionAmount = RefractionAmount,
-                DepthEffect = DepthEffect,
-                ChromaticAberration = ChromaticAberration,
-                BlurRadius = BlurRadius,
-                Vibrancy = Vibrancy,
-                TintColor = TintColor,
-                SurfaceColor = SurfaceColor,
-                HighlightEnabled = HighlightEnabled,
-                HighlightWidth = HighlightWidth,
-                HighlightBlurRadius = HighlightBlurRadius,
-                HighlightOpacity = HighlightOpacity,
-                HighlightAngleDegrees = HighlightAngle,
-                HighlightFalloff = HighlightFalloff,
-
-                InteractiveProgress = InteractiveHighlightEnabled ? Clamp(_pressProgress.Value, 0.0, 1.0) : 0.0,
-                InteractivePosition = _position.Value,
-            };
-
-            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot, LiquidGlassDrawPass.Lens));
-
-            if (InteractiveHighlightEnabled && parameters.InteractiveProgress > 0.001)
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.InteractiveHighlight));
-
-            if (HighlightEnabled)
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
+                InteractiveOverlay?.InvalidateVisual();
+            }
         }
 
         private static double Lerp(double a, double b, double t) => a + (b - a) * t;

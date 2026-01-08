@@ -226,11 +226,21 @@ namespace LiquidGlassAvaloniaUI
                         return;
                     }
 
+                    // If the required clip (inflated by blur/refraction) grows beyond the last capture,
+                    // don't wait for the cadence timer — otherwise interactive slider drags can render
+                    // with an undersized snapshot and appear to "shift" as the blur kernel clamps.
+                    var scaling = topLevel.RenderScaling;
+                    var desiredClip = CalculateBackdropClip(topLevel, state, scaling);
+                    var needsClipGrowthCapture =
+                        desiredClip.DipRect.Width > 0
+                        && desiredClip.DipRect.Height > 0
+                        && (!state.HasLastClipRect || !RectContains(state.LastClipRect, desiredClip.DipRect));
+
                     var nowTicks = DateTime.UtcNow.Ticks;
-                    if ((nowTicks - state.LastCaptureTicksUtc) < s_minCaptureIntervalTicks)
+                    if (!needsClipGrowthCapture && (nowTicks - state.LastCaptureTicksUtc) < s_minCaptureIntervalTicks)
                         return;
 
-                    if (hasDirtyRect && state.HasLastClipRect && !dirtyRect.Intersects(state.LastClipRect))
+                    if (!needsClipGrowthCapture && hasDirtyRect && state.HasLastClipRect && !dirtyRect.Intersects(state.LastClipRect))
                         return;
 
                     QueueCapture(topLevel, state);
@@ -257,6 +267,14 @@ namespace LiquidGlassAvaloniaUI
             state.Renderer = null;
             state.SceneInvalidatedEvent = null;
             state.SceneInvalidatedDelegate = null;
+        }
+
+        private static bool RectContains(Rect outer, Rect inner)
+        {
+            return inner.X >= outer.X
+                   && inner.Y >= outer.Y
+                   && inner.Right <= outer.Right
+                   && inner.Bottom <= outer.Bottom;
         }
 
         private static BackdropClip CalculateBackdropClip(TopLevel topLevel, BackdropState state, double scaling)
@@ -343,8 +361,8 @@ namespace LiquidGlassAvaloniaUI
             switch (control)
             {
                 case LiquidGlassSurface surface:
-                    // Blur is a 5x5 kernel with max offset 2*BlurRadius.
-                    return Math.Max(minInflate, Math.Abs(surface.RefractionAmount) + surface.BlurRadius * 2.0 + 4.0);
+                    // Blur is applied as a Gaussian (sigma ~= BlurRadius), so sampling reaches ~3*sigma.
+                    return Math.Max(minInflate, Math.Abs(surface.RefractionAmount) + surface.BlurRadius * 3.0 + 6.0);
                 case LiquidGlassCard card:
                     return Math.Max(minInflate, Math.Abs(card.DisplacementScale) + card.BlurAmount + 4.0);
                 case LiquidGlassControl legacy:

@@ -21,6 +21,11 @@ namespace LiquidGlassAvaloniaUI
 
         public double BlurRadius { get; set; }
         public double Vibrancy { get; set; }
+        public double Brightness { get; set; }
+        public double Contrast { get; set; }
+        public double ExposureEv { get; set; }
+        public double GammaPower { get; set; }
+        public double BackdropOpacity { get; set; }
 
         public Color TintColor { get; set; }
         public Color SurfaceColor { get; set; }

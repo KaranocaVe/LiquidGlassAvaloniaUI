@@ -13,8 +13,7 @@ namespace LiquidGlassAvaloniaUI
     {
         private static SKRuntimeEffect? s_lensEffect;
         private static SKRuntimeEffect? s_highlightEffect;
-        private static SKRuntimeEffect? s_blurEffect;
-        private static SKRuntimeEffect? s_vibrancyEffect;
+        private static SKRuntimeEffect? s_gammaEffect;
         private static SKRuntimeEffect? s_interactiveHighlightEffect;
         private static bool s_loaded;
 
@@ -79,8 +78,7 @@ namespace LiquidGlassAvaloniaUI
 
             s_lensEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassShader.sksl");
             s_highlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassHighlight.sksl");
-            s_blurEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBlur.sksl");
-            s_vibrancyEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassVibrancy.sksl");
+            s_gammaEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassGamma.sksl");
             s_interactiveHighlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
         }
 
@@ -123,12 +121,6 @@ namespace LiquidGlassAvaloniaUI
             if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
                 return;
 
-            using var backdropShader = SKShader.CreateImage(
-                _backdropSnapshot.Image,
-                SKShaderTileMode.Clamp,
-                SKShaderTileMode.Clamp,
-                WithPixelOrigin(currentInvertedTransform, _backdropSnapshot.OriginInPixels));
-
             var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
@@ -137,14 +129,19 @@ namespace LiquidGlassAvaloniaUI
             var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
             // AndroidLiquidGlass pipeline order:
-            //   vibrancy (saturation) -> blur -> lens
-            var vibrancy = (float)Clamp(_parameters.Vibrancy, 0.0, 3.0);
-            using var vibrancyShader = CreateVibrancyShader(backdropShader, vibrancy);
-            var preBlur = (SKShader?)vibrancyShader ?? backdropShader;
+            //   colorControls (brightness/contrast/saturation) -> blur -> lens -> (optional gamma)
+            //
+            // In Avalonia we approximate the RenderEffect chain by applying an SKImageFilter pipeline to the
+            // captured backdrop snapshot, then sampling the filtered image in the lens runtime shader.
+            var filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters);
 
-            var blurRadius = (float)Clamp(_parameters.BlurRadius, 0.0, 100.0);
-            using var blurredShader = CreateBlurShader(preBlur, blurRadius);
-            var lensInput = (SKShader?)blurredShader ?? preBlur;
+            using var backdropShader = SKShader.CreateImage(
+                filtered.Image,
+                SKShaderTileMode.Clamp,
+                SKShaderTileMode.Clamp,
+                WithPixelOrigin(currentInvertedTransform, filtered.OriginInPixels));
+
+            var lensInput = (SKShader)backdropShader;
 
             var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
             var refractionAmount = (float)_parameters.RefractionAmount;
@@ -167,24 +164,217 @@ namespace LiquidGlassAvaloniaUI
                 lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
             }
 
-            using var paint = new SKPaint
+            var baseShader = lensShader ?? lensInput;
+
+            SKShader? gammaShader = null;
+            try
             {
-                Shader = lensShader ?? lensInput,
-                IsAntialias = true
+                var gammaPower = (float)Clamp(_parameters.GammaPower, 0.0, 10.0);
+                if (s_gammaEffect is not null && Math.Abs(gammaPower - 1.0f) > 0.0005f)
+                {
+                    using var uniforms = new SKRuntimeEffectUniforms(s_gammaEffect);
+                    uniforms["power"] = gammaPower;
+                    using var children = new SKRuntimeEffectChildren(s_gammaEffect);
+                    children["content"] = baseShader;
+                    gammaShader = s_gammaEffect.ToShader(uniforms, children);
+                }
+
+                using var paint = new SKPaint
+                {
+                    Shader = gammaShader ?? baseShader,
+                    IsAntialias = true
+                };
+
+                var rect = SKRect.Create(0, 0, size.Width, size.Height);
+                using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+
+                canvas.Save();
+                canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
+                canvas.DrawRect(rect, paint);
+
+                DrawSurfaceOverlay(canvas, rect);
+
+                canvas.Restore();
+            }
+            finally
+            {
+                gammaShader?.Dispose();
+                lensShader?.Dispose();
+            }
+
+        }
+
+        private static LiquidGlassBackdropSnapshot.FilteredResult GetOrCreateFilteredBackdrop(
+            LiquidGlassBackdropSnapshot snapshot,
+            LiquidGlassDrawParameters parameters)
+        {
+            var brightness = (float)Clamp(parameters.Brightness, -1.0, 1.0);
+            var contrast = (float)Clamp(parameters.Contrast, 0.0, 4.0);
+            var saturation = (float)Clamp(parameters.Vibrancy, 0.0, 4.0);
+            var exposureEv = (float)Clamp(parameters.ExposureEv, -8.0, 8.0);
+            var opacity = (float)Clamp(parameters.BackdropOpacity, 0.0, 1.0);
+
+            var blurSigmaPx = (float)(Clamp(parameters.BlurRadius, 0.0, 256.0) * snapshot.Scaling);
+
+            var isIdentity =
+                Math.Abs(brightness) < 0.0005f
+                && Math.Abs(contrast - 1.0f) < 0.0005f
+                && Math.Abs(saturation - 1.0f) < 0.0005f
+                && Math.Abs(exposureEv) < 0.0005f
+                && Math.Abs(opacity - 1.0f) < 0.0005f
+                && blurSigmaPx <= 0.0005f;
+
+            if (isIdentity)
+                return new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
+
+            // Quantize to keep the cache size stable during slider drags.
+            const float q = 1000.0f;
+            var key = new LiquidGlassBackdropSnapshot.FilteredKey(
+                brightnessQ: (int)Math.Round(brightness * q),
+                contrastQ: (int)Math.Round(contrast * q),
+                saturationQ: (int)Math.Round(saturation * q),
+                exposureEvQ: (int)Math.Round(exposureEv * q),
+                opacityQ: (int)Math.Round(opacity * q),
+                blurSigmaPxQ: (int)Math.Round(blurSigmaPx * q));
+
+            if (snapshot.TryGetFiltered(key, out var cached))
+                return cached;
+
+            var filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx)
+                           ?? new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
+
+            // Never cache the unfiltered snapshot image (it is owned/disposed separately).
+            if (!ReferenceEquals(filtered.Image, snapshot.Image))
+                snapshot.StoreFiltered(key, filtered);
+
+            return filtered;
+        }
+
+        private static LiquidGlassBackdropSnapshot.FilteredResult? CreateFilteredBackdrop(
+            LiquidGlassBackdropSnapshot snapshot,
+            float brightness,
+            float contrast,
+            float saturation,
+            float exposureEv,
+            float opacity,
+            float blurSigmaPx)
+        {
+            var source = snapshot.Image;
+
+            SKImageFilter? filter = null;
+
+            var needsColorControls =
+                Math.Abs(brightness) > 0.0005f
+                || Math.Abs(contrast - 1.0f) > 0.0005f
+                || Math.Abs(saturation - 1.0f) > 0.0005f;
+
+            if (needsColorControls)
+            {
+                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateColorControlsColorMatrix(brightness, contrast, saturation));
+                filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
+            }
+
+            if (Math.Abs(exposureEv) > 0.0005f)
+            {
+                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateExposureColorMatrix(exposureEv));
+                filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
+            }
+
+            if (Math.Abs(opacity - 1.0f) > 0.0005f)
+            {
+                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateOpacityColorMatrix(opacity));
+                filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
+            }
+
+            if (blurSigmaPx > 0.0005f)
+            {
+                // AndroidLiquidGlass uses TileMode.Clamp for its RenderEffect blur stage.
+                // Skia's default tile mode can introduce alpha falloff near image edges (kDecal), which
+                // shows up as darkened borders when the snapshot is clipped by the window bounds.
+                var cropRect = new SKRect(0, 0, source.Width, source.Height);
+                filter = SKImageFilter.CreateBlur(blurSigmaPx, blurSigmaPx, SKShaderTileMode.Clamp, filter, cropRect);
+            }
+
+            if (filter is null)
+                return null;
+
+            using (filter)
+            {
+                // ApplyImageFilter() can return a varying offset/subset for blur radii, which can cause the
+                // sampled backdrop to appear to "drift" while dragging the blur slider. Instead, render the
+                // filtered snapshot into an explicit same-size surface at (0,0) so the origin remains stable.
+                var info = new SKImageInfo(source.Width, source.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+                using var surface = SKSurface.Create(info);
+                if (surface is null)
+                    return null;
+
+                var canvas = surface.Canvas;
+                canvas.Clear(SKColors.Transparent);
+
+                using var paint = new SKPaint
+                {
+                    ImageFilter = filter,
+                    BlendMode = SKBlendMode.Src
+                };
+
+                canvas.DrawImage(source, 0, 0, paint);
+                canvas.Flush();
+
+                var filteredImage = surface.Snapshot();
+                return new LiquidGlassBackdropSnapshot.FilteredResult(filteredImage, snapshot.OriginInPixels);
+            }
+        }
+
+        private static float[] CreateColorControlsColorMatrix(float brightness, float contrast, float saturation)
+        {
+            // Port of AndroidLiquidGlass' colorControlsColorFilter() (ColorFilter.kt).
+            // Note: Skia's color matrix operates on normalized (0..1) colors, unlike Android's 0..255 translation units.
+            var invSat = 1f - saturation;
+            var r = 0.213f * invSat;
+            var g = 0.715f * invSat;
+            var b = 0.072f * invSat;
+
+            var c = contrast;
+            // Skia's color matrix filter operates on normalized (0..1) colors, so the translation
+            // terms must also be normalized (Android's ColorMatrix uses 0..255 translation units).
+            var t = (0.5f - c * 0.5f + brightness);
+            var s = saturation;
+
+            var cr = c * r;
+            var cg = c * g;
+            var cb = c * b;
+            var cs = c * s;
+
+            return new[]
+            {
+                cr + cs, cg, cb, 0f, t,
+                cr, cg + cs, cb, 0f, t,
+                cr, cg, cb + cs, 0f, t,
+                0f, 0f, 0f, 1f, 0f
             };
+        }
 
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
-            using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+        private static float[] CreateExposureColorMatrix(float ev)
+        {
+            var scale = (float)Math.Pow(2.0, ev / 2.2);
+            return new[]
+            {
+                scale, 0f, 0f, 0f, 0f,
+                0f, scale, 0f, 0f, 0f,
+                0f, 0f, scale, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            };
+        }
 
-            canvas.Save();
-            canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
-            canvas.DrawRect(rect, paint);
-
-            DrawSurfaceOverlay(canvas, rect);
-
-            canvas.Restore();
-
-            lensShader?.Dispose();
+        private static float[] CreateOpacityColorMatrix(float alpha)
+        {
+            return new[]
+            {
+                1f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
+                0f, 0f, 1f, 0f, 0f,
+                0f, 0f, 0f, alpha, 0f
+            };
         }
 
         private void RenderInteractiveHighlight(SKCanvas canvas)
@@ -314,34 +504,6 @@ namespace LiquidGlassAvaloniaUI
 
             canvas.Restore();
             canvas.Restore();
-        }
-
-        private static SKShader? CreateBlurShader(SKShader input, float radius)
-        {
-            if (radius <= 0.001f)
-                return null;
-            if (s_blurEffect is null)
-                return null;
-
-            using var uniforms = new SKRuntimeEffectUniforms(s_blurEffect);
-            uniforms["radius"] = radius;
-            using var children = new SKRuntimeEffectChildren(s_blurEffect);
-            children["content"] = input;
-            return s_blurEffect.ToShader(uniforms, children);
-        }
-
-        private static SKShader? CreateVibrancyShader(SKShader input, float saturation)
-        {
-            if (Math.Abs(saturation - 1.0f) < 0.0001f)
-                return null;
-            if (s_vibrancyEffect is null)
-                return null;
-
-            using var uniforms = new SKRuntimeEffectUniforms(s_vibrancyEffect);
-            uniforms["saturation"] = saturation;
-            using var children = new SKRuntimeEffectChildren(s_vibrancyEffect);
-            children["content"] = input;
-            return s_vibrancyEffect.ToShader(uniforms, children);
         }
 
         private void DrawSurfaceOverlay(SKCanvas canvas, SKRect rect)

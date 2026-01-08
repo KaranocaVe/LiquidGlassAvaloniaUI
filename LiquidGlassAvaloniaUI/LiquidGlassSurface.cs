@@ -33,6 +33,21 @@ namespace LiquidGlassAvaloniaUI
         public static readonly StyledProperty<double> VibrancyProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(Vibrancy), 1.5);
 
+        public static readonly StyledProperty<double> BrightnessProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(Brightness), 0.0);
+
+        public static readonly StyledProperty<double> ContrastProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(Contrast), 1.0);
+
+        public static readonly StyledProperty<double> ExposureEvProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ExposureEv), 0.0);
+
+        public static readonly StyledProperty<double> GammaPowerProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(GammaPower), 1.0);
+
+        public static readonly StyledProperty<double> BackdropOpacityProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(BackdropOpacity), 1.0);
+
         public static readonly StyledProperty<Color> TintColorProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, Color>(nameof(TintColor), Colors.Transparent);
 
@@ -162,6 +177,42 @@ namespace LiquidGlassAvaloniaUI
             set => SetValue(VibrancyProperty, value);
         }
 
+        public double Saturation
+        {
+            get => Vibrancy;
+            set => Vibrancy = value;
+        }
+
+        public double Brightness
+        {
+            get => GetValue(BrightnessProperty);
+            set => SetValue(BrightnessProperty, value);
+        }
+
+        public double Contrast
+        {
+            get => GetValue(ContrastProperty);
+            set => SetValue(ContrastProperty, value);
+        }
+
+        public double ExposureEv
+        {
+            get => GetValue(ExposureEvProperty);
+            set => SetValue(ExposureEvProperty, value);
+        }
+
+        public double GammaPower
+        {
+            get => GetValue(GammaPowerProperty);
+            set => SetValue(GammaPowerProperty, value);
+        }
+
+        public double BackdropOpacity
+        {
+            get => GetValue(BackdropOpacityProperty);
+            set => SetValue(BackdropOpacityProperty, value);
+        }
+
         public Color TintColor
         {
             get => GetValue(TintColorProperty);
@@ -278,11 +329,21 @@ namespace LiquidGlassAvaloniaUI
             if (Bounds.Width <= 0 || Bounds.Height <= 0)
                 return;
 
+            var parameters = CreateDrawParameters();
+            var controlBounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
+
+            if (ShadowEnabled && ShadowOpacity > 0.001 && ShadowColor.A > 0 && ShadowRadius > 0.001)
+                context.Custom(new LiquidGlassShadowDrawOperation(controlBounds, parameters));
+
             LiquidGlassBackdropProvider.EnsureSnapshot(this);
             var snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
 
-            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-            var parameters = new LiquidGlassDrawParameters
+            context.Custom(new LiquidGlassDrawOperation(controlBounds, parameters, snapshot, LiquidGlassDrawPass.Lens));
+        }
+
+        internal LiquidGlassDrawParameters CreateDrawParameters()
+        {
+            return new LiquidGlassDrawParameters
             {
                 CornerRadius = CornerRadius,
                 RefractionHeight = RefractionHeight,
@@ -291,6 +352,11 @@ namespace LiquidGlassAvaloniaUI
                 ChromaticAberration = ChromaticAberration,
                 BlurRadius = BlurRadius,
                 Vibrancy = Vibrancy,
+                Brightness = Brightness,
+                Contrast = Contrast,
+                ExposureEv = ExposureEv,
+                GammaPower = GammaPower,
+                BackdropOpacity = BackdropOpacity,
                 TintColor = TintColor,
                 SurfaceColor = SurfaceColor,
                 HighlightEnabled = HighlightEnabled,

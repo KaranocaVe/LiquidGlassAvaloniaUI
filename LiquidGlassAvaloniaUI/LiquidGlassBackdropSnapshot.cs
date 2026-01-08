@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using SkiaSharp;
 
@@ -6,9 +7,70 @@ namespace LiquidGlassAvaloniaUI
 {
     internal sealed class LiquidGlassBackdropSnapshot : IDisposable
     {
+        internal readonly struct FilteredKey : IEquatable<FilteredKey>
+        {
+            public FilteredKey(int brightnessQ, int contrastQ, int saturationQ, int exposureEvQ, int opacityQ, int blurSigmaPxQ)
+            {
+                BrightnessQ = brightnessQ;
+                ContrastQ = contrastQ;
+                SaturationQ = saturationQ;
+                ExposureEvQ = exposureEvQ;
+                OpacityQ = opacityQ;
+                BlurSigmaPxQ = blurSigmaPxQ;
+            }
+
+            public int BrightnessQ { get; }
+            public int ContrastQ { get; }
+            public int SaturationQ { get; }
+            public int ExposureEvQ { get; }
+            public int OpacityQ { get; }
+            public int BlurSigmaPxQ { get; }
+
+            public bool Equals(FilteredKey other) =>
+                BrightnessQ == other.BrightnessQ
+                && ContrastQ == other.ContrastQ
+                && SaturationQ == other.SaturationQ
+                && ExposureEvQ == other.ExposureEvQ
+                && OpacityQ == other.OpacityQ
+                && BlurSigmaPxQ == other.BlurSigmaPxQ;
+
+            public override bool Equals(object? obj) => obj is FilteredKey other && Equals(other);
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hashCode = BrightnessQ;
+                    hashCode = (hashCode * 397) ^ ContrastQ;
+                    hashCode = (hashCode * 397) ^ SaturationQ;
+                    hashCode = (hashCode * 397) ^ ExposureEvQ;
+                    hashCode = (hashCode * 397) ^ OpacityQ;
+                    hashCode = (hashCode * 397) ^ BlurSigmaPxQ;
+                    return hashCode;
+                }
+            }
+        }
+
+        internal readonly struct FilteredResult
+        {
+            public FilteredResult(SKImage image, PixelPoint originInPixels)
+            {
+                Image = image ?? throw new ArgumentNullException(nameof(image));
+                OriginInPixels = originInPixels;
+            }
+
+            public SKImage Image { get; }
+
+            public PixelPoint OriginInPixels { get; }
+        }
+
         private int _leases;
         private int _disposeRequested;
         private int _disposed;
+        private readonly object _filteredLock = new();
+        private Dictionary<FilteredKey, FilteredResult>? _filtered;
+        private Queue<FilteredKey>? _filteredOrder;
+        private const int MaxFilteredEntries = 8;
 
         public LiquidGlassBackdropSnapshot(SKImage image, PixelPoint originInPixels, PixelSize pixelSize, double scaling)
         {
@@ -28,6 +90,49 @@ namespace LiquidGlassAvaloniaUI
         public PixelSize PixelSize { get; }
 
         public double Scaling { get; }
+
+        public bool TryGetFiltered(FilteredKey key, out FilteredResult result)
+        {
+            lock (_filteredLock)
+            {
+                if (_filtered is null)
+                {
+                    result = default;
+                    return false;
+                }
+
+                return _filtered.TryGetValue(key, out result);
+            }
+        }
+
+        public void StoreFiltered(FilteredKey key, FilteredResult result)
+        {
+            lock (_filteredLock)
+            {
+                _filtered ??= new Dictionary<FilteredKey, FilteredResult>();
+                _filteredOrder ??= new Queue<FilteredKey>();
+
+                if (_filtered.TryGetValue(key, out var existing))
+                {
+                    existing.Image.Dispose();
+                    _filtered[key] = result;
+                    return;
+                }
+
+                _filtered[key] = result;
+                _filteredOrder.Enqueue(key);
+
+                while (_filtered.Count > MaxFilteredEntries && _filteredOrder.Count > 0)
+                {
+                    var evictKey = _filteredOrder.Dequeue();
+                    if (_filtered.TryGetValue(evictKey, out var evictValue) && !evictKey.Equals(key))
+                    {
+                        _filtered.Remove(evictKey);
+                        evictValue.Image.Dispose();
+                    }
+                }
+            }
+        }
 
         public bool TryAddLease()
         {
@@ -71,6 +176,17 @@ namespace LiquidGlassAvaloniaUI
         {
             if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0)
                 return;
+
+            lock (_filteredLock)
+            {
+                if (_filtered is not null)
+                {
+                    foreach (var pair in _filtered)
+                        pair.Value.Image.Dispose();
+                    _filtered = null;
+                    _filteredOrder = null;
+                }
+            }
 
             Image.Dispose();
         }

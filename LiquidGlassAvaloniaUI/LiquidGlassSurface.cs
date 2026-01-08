@@ -57,8 +57,42 @@ namespace LiquidGlassAvaloniaUI
         public static readonly StyledProperty<double> HighlightFalloffProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(HighlightFalloff), 1.0);
 
+        public static readonly StyledProperty<bool> ShadowEnabledProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, bool>(nameof(ShadowEnabled), true);
+
+        public static readonly StyledProperty<double> ShadowRadiusProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ShadowRadius), 24.0);
+
+        public static readonly StyledProperty<Vector> ShadowOffsetProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Vector>(nameof(ShadowOffset), new Vector(0.0, 4.0));
+
+        public static readonly StyledProperty<Color> ShadowColorProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Color>(nameof(ShadowColor), Color.FromArgb(26, 0, 0, 0));
+
+        public static readonly StyledProperty<double> ShadowOpacityProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ShadowOpacity), 1.0);
+
+        public static readonly StyledProperty<bool> InnerShadowEnabledProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, bool>(nameof(InnerShadowEnabled), false);
+
+        public static readonly StyledProperty<double> InnerShadowRadiusProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(InnerShadowRadius), 24.0);
+
+        public static readonly StyledProperty<Vector> InnerShadowOffsetProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Vector>(nameof(InnerShadowOffset), new Vector(0.0, 24.0));
+
+        public static readonly StyledProperty<Color> InnerShadowColorProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Color>(nameof(InnerShadowColor), Color.FromArgb(38, 0, 0, 0));
+
+        public static readonly StyledProperty<double> InnerShadowOpacityProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(InnerShadowOpacity), 1.0);
+
         static LiquidGlassSurface()
         {
+            // TemplatedControl defaults ClipToBounds=true, which would clip the shadow pass to the control bounds.
+            // We clip the content via the template's Border and clip shader passes explicitly.
+            ClipToBoundsProperty.OverrideDefaultValue<LiquidGlassSurface>(false);
+
             AffectsRender<LiquidGlassSurface>(
                 CornerRadiusProperty,
                 RefractionHeightProperty,
@@ -176,11 +210,64 @@ namespace LiquidGlassAvaloniaUI
             set => SetValue(HighlightFalloffProperty, value);
         }
 
-        protected override Size ArrangeOverride(Size finalSize)
+        public bool ShadowEnabled
         {
-            var result = base.ArrangeOverride(finalSize);
-            UpdateClipGeometry(finalSize);
-            return result;
+            get => GetValue(ShadowEnabledProperty);
+            set => SetValue(ShadowEnabledProperty, value);
+        }
+
+        public double ShadowRadius
+        {
+            get => GetValue(ShadowRadiusProperty);
+            set => SetValue(ShadowRadiusProperty, value);
+        }
+
+        public Vector ShadowOffset
+        {
+            get => GetValue(ShadowOffsetProperty);
+            set => SetValue(ShadowOffsetProperty, value);
+        }
+
+        public Color ShadowColor
+        {
+            get => GetValue(ShadowColorProperty);
+            set => SetValue(ShadowColorProperty, value);
+        }
+
+        public double ShadowOpacity
+        {
+            get => GetValue(ShadowOpacityProperty);
+            set => SetValue(ShadowOpacityProperty, value);
+        }
+
+        public bool InnerShadowEnabled
+        {
+            get => GetValue(InnerShadowEnabledProperty);
+            set => SetValue(InnerShadowEnabledProperty, value);
+        }
+
+        public double InnerShadowRadius
+        {
+            get => GetValue(InnerShadowRadiusProperty);
+            set => SetValue(InnerShadowRadiusProperty, value);
+        }
+
+        public Vector InnerShadowOffset
+        {
+            get => GetValue(InnerShadowOffsetProperty);
+            set => SetValue(InnerShadowOffsetProperty, value);
+        }
+
+        public Color InnerShadowColor
+        {
+            get => GetValue(InnerShadowColorProperty);
+            set => SetValue(InnerShadowColorProperty, value);
+        }
+
+        public double InnerShadowOpacity
+        {
+            get => GetValue(InnerShadowOpacityProperty);
+            set => SetValue(InnerShadowOpacityProperty, value);
         }
 
         public override void Render(DrawingContext context)

@@ -1,19 +1,20 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
+using Avalonia.Data;
 using Avalonia.Media;
 
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
     /// A composited “liquid glass” surface inspired by AndroidLiquidGlass’ backdrop pipeline:
-    /// vibrancy + blur + lens refraction + edge highlight.
+    /// vibrancy + blur + lens refraction + (optional) highlights + shadows.
     /// </summary>
-    public class LiquidGlassSurface : Decorator
+    public class LiquidGlassSurface : ContentControl
     {
-        public static readonly StyledProperty<CornerRadius> CornerRadiusProperty =
-            Border.CornerRadiusProperty.AddOwner<LiquidGlassSurface>();
-
         public static readonly StyledProperty<double> RefractionHeightProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(RefractionHeight), 12.0);
 
@@ -66,22 +67,29 @@ namespace LiquidGlassAvaloniaUI
                 ChromaticAberrationProperty,
                 BlurRadiusProperty,
                 VibrancyProperty,
+                BrightnessProperty,
+                ContrastProperty,
+                ExposureEvProperty,
+                GammaPowerProperty,
+                BackdropOpacityProperty,
                 TintColorProperty,
                 SurfaceColorProperty,
-                HighlightEnabledProperty,
-                HighlightWidthProperty,
-                HighlightBlurRadiusProperty,
-                HighlightOpacityProperty,
-                HighlightAngleProperty,
-                HighlightFalloffProperty);
+                ShadowEnabledProperty,
+                ShadowRadiusProperty,
+                ShadowOffsetProperty,
+                ShadowColorProperty,
+                ShadowOpacityProperty);
 
-            CornerRadiusProperty.Changed.AddClassHandler<LiquidGlassSurface>((x, _) => x.UpdateClipGeometry());
+            TemplateProperty.OverrideDefaultValue<LiquidGlassSurface>(CreateDefaultTemplate());
         }
 
-        public CornerRadius CornerRadius
+        internal LiquidGlassInteractiveOverlay? InteractiveOverlay { get; private set; }
+        internal LiquidGlassFrontOverlay? FrontOverlay { get; private set; }
+
+        public Control? Child
         {
-            get => GetValue(CornerRadiusProperty);
-            set => SetValue(CornerRadiusProperty, value);
+            get => Content as Control;
+            set => Content = value;
         }
 
         public double RefractionHeight
@@ -204,81 +212,90 @@ namespace LiquidGlassAvaloniaUI
                 HighlightOpacity = HighlightOpacity,
                 HighlightAngleDegrees = HighlightAngle,
                 HighlightFalloff = HighlightFalloff,
+                ShadowEnabled = ShadowEnabled,
+                ShadowRadius = ShadowRadius,
+                ShadowOffset = ShadowOffset,
+                ShadowColor = ShadowColor,
+                ShadowOpacity = ShadowOpacity,
+                InnerShadowEnabled = InnerShadowEnabled,
+                InnerShadowRadius = InnerShadowRadius,
+                InnerShadowOffset = InnerShadowOffset,
+                InnerShadowColor = InnerShadowColor,
+                InnerShadowOpacity = InnerShadowOpacity,
             };
-
-            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot, LiquidGlassDrawPass.Lens));
-
-            if (HighlightEnabled)
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
         }
 
-        private void UpdateClipGeometry()
+        protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
-            UpdateClipGeometry(Bounds.Size);
+            base.OnApplyTemplate(e);
+            InteractiveOverlay = e.NameScope.Find<LiquidGlassInteractiveOverlay>("PART_InteractiveOverlay");
+            FrontOverlay = e.NameScope.Find<LiquidGlassFrontOverlay>("PART_FrontOverlay");
         }
 
-        private void UpdateClipGeometry(Size size)
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
-            if (size.Width <= 0 || size.Height <= 0)
+            base.OnPropertyChanged(change);
+
+            if (change.Property == CornerRadiusProperty)
             {
-                Clip = null;
+                InteractiveOverlay?.InvalidateVisual();
+                FrontOverlay?.InvalidateVisual();
                 return;
             }
 
-            Clip = CreateRoundRectGeometry(new Rect(size), CornerRadius);
-        }
-
-        private static Geometry CreateRoundRectGeometry(Rect rect, CornerRadius cornerRadius)
-        {
-            var width = rect.Width;
-            var height = rect.Height;
-            if (width <= 0 || height <= 0)
-                return new RectangleGeometry(rect);
-
-            var maxRadius = Math.Min(width, height) * 0.5;
-            var tl = Clamp(cornerRadius.TopLeft, 0.0, maxRadius);
-            var tr = Clamp(cornerRadius.TopRight, 0.0, maxRadius);
-            var br = Clamp(cornerRadius.BottomRight, 0.0, maxRadius);
-            var bl = Clamp(cornerRadius.BottomLeft, 0.0, maxRadius);
-
-            var x = rect.X;
-            var y = rect.Y;
-            var right = rect.Right;
-            var bottom = rect.Bottom;
-
-            var geometry = new StreamGeometry();
-            using (var ctx = geometry.Open())
+            if (change.Property == HighlightEnabledProperty
+                || change.Property == HighlightWidthProperty
+                || change.Property == HighlightBlurRadiusProperty
+                || change.Property == HighlightOpacityProperty
+                || change.Property == HighlightAngleProperty
+                || change.Property == HighlightFalloffProperty
+                || change.Property == InnerShadowEnabledProperty
+                || change.Property == InnerShadowRadiusProperty
+                || change.Property == InnerShadowOffsetProperty
+                || change.Property == InnerShadowColorProperty
+                || change.Property == InnerShadowOpacityProperty)
             {
-                ctx.SetFillRule(FillRule.NonZero);
-
-                ctx.BeginFigure(new Point(x + tl, y), isFilled: true);
-                ctx.LineTo(new Point(right - tr, y));
-                if (tr > 0.0)
-                    ctx.ArcTo(new Point(right, y + tr), new Size(tr, tr), 0.0, isLargeArc: false, SweepDirection.Clockwise);
-
-                ctx.LineTo(new Point(right, bottom - br));
-                if (br > 0.0)
-                    ctx.ArcTo(new Point(right - br, bottom), new Size(br, br), 0.0, isLargeArc: false, SweepDirection.Clockwise);
-
-                ctx.LineTo(new Point(x + bl, bottom));
-                if (bl > 0.0)
-                    ctx.ArcTo(new Point(x, bottom - bl), new Size(bl, bl), 0.0, isLargeArc: false, SweepDirection.Clockwise);
-
-                ctx.LineTo(new Point(x, y + tl));
-                if (tl > 0.0)
-                    ctx.ArcTo(new Point(x + tl, y), new Size(tl, tl), 0.0, isLargeArc: false, SweepDirection.Clockwise);
-
-                ctx.EndFigure(isClosed: true);
+                FrontOverlay?.InvalidateVisual();
             }
-
-            return geometry;
         }
 
-        private static double Clamp(double value, double min, double max)
+        private static FuncControlTemplate CreateDefaultTemplate()
         {
-            if (value < min) return min;
-            if (value > max) return max;
-            return value;
+            return new FuncControlTemplate<LiquidGlassSurface>((_, ns) =>
+            {
+                var interactiveOverlay = new LiquidGlassInteractiveOverlay
+                {
+                    Name = "PART_InteractiveOverlay",
+                    IsHitTestVisible = false
+                }.RegisterInNameScope(ns);
+
+                var presenter = new ContentPresenter
+                {
+                    Name = "PART_ContentPresenter",
+                    [~ContentPresenter.ContentProperty] = new TemplateBinding(ContentProperty),
+                    [~ContentPresenter.ContentTemplateProperty] = new TemplateBinding(ContentTemplateProperty),
+                    [~ContentPresenter.VerticalContentAlignmentProperty] = new TemplateBinding(VerticalContentAlignmentProperty),
+                    [~ContentPresenter.HorizontalContentAlignmentProperty] = new TemplateBinding(HorizontalContentAlignmentProperty)
+                }.RegisterInNameScope(ns);
+
+                var frontOverlay = new LiquidGlassFrontOverlay
+                {
+                    Name = "PART_FrontOverlay",
+                    IsHitTestVisible = false
+                }.RegisterInNameScope(ns);
+
+                var grid = new Grid();
+                grid.Children.Add(interactiveOverlay);
+                grid.Children.Add(presenter);
+                grid.Children.Add(frontOverlay);
+
+                return new Border
+                {
+                    ClipToBounds = true,
+                    [~Border.CornerRadiusProperty] = new TemplateBinding(CornerRadiusProperty),
+                    Child = grid
+                };
+            });
         }
     }
 }

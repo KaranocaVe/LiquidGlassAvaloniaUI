@@ -34,5 +34,17 @@ namespace LiquidGlassAvaloniaUI
 
         public double InteractiveProgress { get; set; }
         public Point InteractivePosition { get; set; }
+
+        public bool ShadowEnabled { get; set; }
+        public double ShadowRadius { get; set; }
+        public Vector ShadowOffset { get; set; }
+        public Color ShadowColor { get; set; }
+        public double ShadowOpacity { get; set; }
+
+        public bool InnerShadowEnabled { get; set; }
+        public double InnerShadowRadius { get; set; }
+        public Vector InnerShadowOffset { get; set; }
+        public Color InnerShadowColor { get; set; }
+        public double InnerShadowOpacity { get; set; }
     }
 }

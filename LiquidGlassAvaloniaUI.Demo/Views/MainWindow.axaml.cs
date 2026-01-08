@@ -1,5 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+#if DEBUG
+using Avalonia.Diagnostics;
+#endif
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using LiquidGlassAvaloniaUI;
@@ -19,7 +22,9 @@ public partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
 
+#if DEBUG
         this.AttachDevTools();
+#endif
     }
 
     private void OnPrimaryLiquidButtonClick(object? sender, RoutedEventArgs e)

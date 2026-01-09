@@ -40,9 +40,12 @@
                             Spacing="20"
                             Margin="0,12,0,24">
 
-                    <local:LiquidGlassSurface Width="520"
+                    <local:LiquidGlassSurface x:Name="MainGlass"
+                                              Width="520"
                                               Height="340"
                                               CornerRadius="36"
+                                              BackdropZoom="{Binding BackdropZoom}"
+                                              BackdropOffset="{Binding BackdropOffset}"
                                               RefractionHeight="{Binding RefractionHeight}"
                                               RefractionAmount="{Binding RefractionAmount}"
                                               DepthEffect="{Binding DepthEffect}"
@@ -56,6 +59,14 @@
                                               BackdropOpacity="{Binding BackdropOpacity}"
                                               TintColor="{Binding TintColor}"
                                               SurfaceColor="{Binding SurfaceColor}"
+                                              ProgressiveBlurEnabled="{Binding ProgressiveBlurEnabled}"
+                                              ProgressiveBlurStart="{Binding ProgressiveBlurStart}"
+                                              ProgressiveBlurEnd="{Binding ProgressiveBlurEnd}"
+                                              ProgressiveTintColor="{Binding ProgressiveTintColor}"
+                                              ProgressiveTintIntensity="{Binding ProgressiveTintIntensity}"
+                                              AdaptiveLuminanceEnabled="{Binding AdaptiveLuminanceEnabled}"
+                                              AdaptiveLuminanceUpdateIntervalMs="{Binding AdaptiveLuminanceUpdateIntervalMs}"
+                                              AdaptiveLuminanceSmoothing="{Binding AdaptiveLuminanceSmoothing}"
                                               HighlightEnabled="{Binding HighlightEnabled}"
                                               HighlightWidth="{Binding HighlightWidth}"
                                               HighlightBlurRadius="{Binding HighlightBlurRadius}"
@@ -441,18 +452,225 @@
                                        HorizontalAlignment="Right" />
                         </Grid>
 
-                        <StackPanel Spacing="8">
-                            <CheckBox Content="DepthEffect"
-                                      IsChecked="{Binding DepthEffect}"
-                                      Foreground="White" />
-                            <CheckBox Content="ChromaticAberration"
-                                      IsChecked="{Binding ChromaticAberration}"
-                                      Foreground="White" />
-                        </StackPanel>
+	                        <StackPanel Spacing="8">
+	                            <CheckBox Content="DepthEffect"
+	                                      IsChecked="{Binding DepthEffect}"
+	                                      Foreground="White" />
+	                            <CheckBox Content="ChromaticAberration"
+	                                      IsChecked="{Binding ChromaticAberration}"
+	                                      Foreground="White" />
+	                        </StackPanel>
 
-                        <Border Background="#26FFFFFF"
-                                CornerRadius="12"
-                                Padding="12">
+	                        <Border Background="#26FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
+	                            <StackPanel Spacing="10">
+	                                <TextBlock Text="Backdrop Transform (Magnifier)"
+	                                           FontSize="13"
+	                                           FontWeight="SemiBold"
+	                                           Foreground="White" />
+
+	                                <Grid ColumnDefinitions="120,*,70"
+	                                      RowDefinitions="Auto,Auto,Auto"
+	                                      ColumnSpacing="10"
+	                                      RowSpacing="10">
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="0"
+	                                               Text="Zoom"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="0"
+	                                            Grid.Column="1"
+	                                            Minimum="0.5"
+	                                            Maximum="3"
+	                                            Value="{Binding BackdropZoom}" />
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="2"
+	                                               Text="{Binding BackdropZoom, StringFormat='{}{0:F2}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="0"
+	                                               Text="OffsetX"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="1"
+	                                            Grid.Column="1"
+	                                            Minimum="-200"
+	                                            Maximum="200"
+	                                            Value="{Binding BackdropOffsetX}" />
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="2"
+	                                               Text="{Binding BackdropOffsetX, StringFormat='{}{0:F0}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+
+	                                    <TextBlock Grid.Row="2"
+	                                               Grid.Column="0"
+	                                               Text="OffsetY"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="2"
+	                                            Grid.Column="1"
+	                                            Minimum="-200"
+	                                            Maximum="200"
+	                                            Value="{Binding BackdropOffsetY}" />
+	                                    <TextBlock Grid.Row="2"
+	                                               Grid.Column="2"
+	                                               Text="{Binding BackdropOffsetY, StringFormat='{}{0:F0}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+	                                </Grid>
+	                            </StackPanel>
+	                        </Border>
+
+	                        <Border Background="#26FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
+	                            <StackPanel Spacing="10">
+	                                <TextBlock Text="Progressive Blur"
+	                                           FontSize="13"
+	                                           FontWeight="SemiBold"
+	                                           Foreground="White" />
+
+	                                <CheckBox Content="Enabled"
+	                                          IsChecked="{Binding ProgressiveBlurEnabled}"
+	                                          Foreground="White" />
+
+	                                <Grid ColumnDefinitions="120,*,70"
+	                                      RowDefinitions="Auto,Auto,Auto"
+	                                      ColumnSpacing="10"
+	                                      RowSpacing="10">
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="0"
+	                                               Text="Start"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="0"
+	                                            Grid.Column="1"
+	                                            Minimum="0"
+	                                            Maximum="1"
+	                                            Value="{Binding ProgressiveBlurStart}" />
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="2"
+	                                               Text="{Binding ProgressiveBlurStart, StringFormat='{}{0:F2}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="0"
+	                                               Text="End"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="1"
+	                                            Grid.Column="1"
+	                                            Minimum="0"
+	                                            Maximum="1"
+	                                            Value="{Binding ProgressiveBlurEnd}" />
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="2"
+	                                               Text="{Binding ProgressiveBlurEnd, StringFormat='{}{0:F2}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+
+	                                    <TextBlock Grid.Row="2"
+	                                               Grid.Column="0"
+	                                               Text="TintMix"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="2"
+	                                            Grid.Column="1"
+	                                            Minimum="0"
+	                                            Maximum="1"
+	                                            Value="{Binding ProgressiveTintIntensity}" />
+	                                    <TextBlock Grid.Row="2"
+	                                               Grid.Column="2"
+	                                               Text="{Binding ProgressiveTintIntensity, StringFormat='{}{0:F2}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+	                                </Grid>
+
+	                                <StackPanel Orientation="Horizontal" Spacing="10">
+	                                    <CheckBox Content="Tint"
+	                                              IsChecked="{Binding EnableProgressiveTint}"
+	                                              Foreground="White" />
+	                                    <ComboBox SelectedIndex="{Binding ProgressiveTintPresetIndex}"
+	                                              IsEnabled="{Binding EnableProgressiveTint}"
+	                                              Width="140">
+	                                        <ComboBoxItem Content="White" />
+	                                        <ComboBoxItem Content="#808080" />
+	                                    </ComboBox>
+	                                </StackPanel>
+	                            </StackPanel>
+	                        </Border>
+
+	                        <Border Background="#26FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
+	                            <StackPanel Spacing="10">
+	                                <TextBlock Text="Adaptive Luminance"
+	                                           FontSize="13"
+	                                           FontWeight="SemiBold"
+	                                           Foreground="White" />
+
+	                                <CheckBox Content="Enabled (overrides brightness/contrast/blur)"
+	                                          IsChecked="{Binding AdaptiveLuminanceEnabled}"
+	                                          Foreground="White" />
+
+	                                <TextBlock Text="{Binding ElementName=MainGlass, Path=AdaptiveLuminance, StringFormat='Luminance: {0:F2}'}"
+	                                           Foreground="#B3FFFFFF" />
+
+	                                <Grid ColumnDefinitions="120,*,70"
+	                                      RowDefinitions="Auto,Auto"
+	                                      ColumnSpacing="10"
+	                                      RowSpacing="10">
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="0"
+	                                               Text="Interval (ms)"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="0"
+	                                            Grid.Column="1"
+	                                            Minimum="50"
+	                                            Maximum="1000"
+	                                            Value="{Binding AdaptiveLuminanceUpdateIntervalMs}" />
+	                                    <TextBlock Grid.Row="0"
+	                                               Grid.Column="2"
+	                                               Text="{Binding AdaptiveLuminanceUpdateIntervalMs, StringFormat='{}{0:F0}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="0"
+	                                               Text="Smoothing"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center" />
+	                                    <Slider Grid.Row="1"
+	                                            Grid.Column="1"
+	                                            Minimum="0.05"
+	                                            Maximum="1"
+	                                            Value="{Binding AdaptiveLuminanceSmoothing}" />
+	                                    <TextBlock Grid.Row="1"
+	                                               Grid.Column="2"
+	                                               Text="{Binding AdaptiveLuminanceSmoothing, StringFormat='{}{0:F2}'}"
+	                                               Foreground="White"
+	                                               VerticalAlignment="Center"
+	                                               HorizontalAlignment="Right" />
+	                                </Grid>
+	                            </StackPanel>
+	                        </Border>
+
+	                        <Border Background="#26FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="Highlight"
                                            FontSize="13"

@@ -7,6 +7,10 @@ namespace AvaloniaApplication1.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    private double _backdropZoom = 1.0;
+    private double _backdropOffsetX = 0.0;
+    private double _backdropOffsetY = 0.0;
+
     private double _refractionHeight = 12.0;
     private double _refractionAmount = 24.0;
     private double _blurRadius = 2.0;
@@ -48,6 +52,46 @@ public class MainWindowViewModel : ViewModelBase
     private int _tintPresetIndex = 0;
     private bool _enableSurface;
     private int _surfacePresetIndex = 0;
+
+    private bool _progressiveBlurEnabled;
+    private double _progressiveBlurStart = 0.5;
+    private double _progressiveBlurEnd = 1.0;
+    private double _progressiveTintIntensity = 0.8;
+    private bool _enableProgressiveTint = true;
+    private int _progressiveTintPresetIndex = 1;
+
+    private bool _adaptiveLuminanceEnabled;
+    private double _adaptiveLuminanceUpdateIntervalMs = 250.0;
+    private double _adaptiveLuminanceSmoothing = 0.2;
+
+    public double BackdropZoom
+    {
+        get => _backdropZoom;
+        set => this.RaiseAndSetIfChanged(ref _backdropZoom, value);
+    }
+
+    public double BackdropOffsetX
+    {
+        get => _backdropOffsetX;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _backdropOffsetX, value);
+            this.RaisePropertyChanged(nameof(BackdropOffset));
+        }
+    }
+
+    public double BackdropOffsetY
+    {
+        get => _backdropOffsetY;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _backdropOffsetY, value);
+            this.RaisePropertyChanged(nameof(BackdropOffset));
+        }
+    }
+
+    public Vector BackdropOffset => new Vector(BackdropOffsetX, BackdropOffsetY);
+
 
     public double RefractionHeight
     {
@@ -305,6 +349,72 @@ public class MainWindowViewModel : ViewModelBase
 
     public Color SurfaceColor => EnableSurface ? SurfacePresets[Math.Clamp(SurfacePresetIndex, 0, SurfacePresets.Length - 1)] : Colors.Transparent;
 
+    public bool ProgressiveBlurEnabled
+    {
+        get => _progressiveBlurEnabled;
+        set => this.RaiseAndSetIfChanged(ref _progressiveBlurEnabled, value);
+    }
+
+    public double ProgressiveBlurStart
+    {
+        get => _progressiveBlurStart;
+        set => this.RaiseAndSetIfChanged(ref _progressiveBlurStart, value);
+    }
+
+    public double ProgressiveBlurEnd
+    {
+        get => _progressiveBlurEnd;
+        set => this.RaiseAndSetIfChanged(ref _progressiveBlurEnd, value);
+    }
+
+    public double ProgressiveTintIntensity
+    {
+        get => _progressiveTintIntensity;
+        set => this.RaiseAndSetIfChanged(ref _progressiveTintIntensity, value);
+    }
+
+    public bool EnableProgressiveTint
+    {
+        get => _enableProgressiveTint;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _enableProgressiveTint, value);
+            this.RaisePropertyChanged(nameof(ProgressiveTintColor));
+        }
+    }
+
+    public int ProgressiveTintPresetIndex
+    {
+        get => _progressiveTintPresetIndex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _progressiveTintPresetIndex, value);
+            this.RaisePropertyChanged(nameof(ProgressiveTintColor));
+        }
+    }
+
+    public Color ProgressiveTintColor => EnableProgressiveTint
+        ? ProgressiveTintPresets[Math.Clamp(ProgressiveTintPresetIndex, 0, ProgressiveTintPresets.Length - 1)]
+        : Colors.Transparent;
+
+    public bool AdaptiveLuminanceEnabled
+    {
+        get => _adaptiveLuminanceEnabled;
+        set => this.RaiseAndSetIfChanged(ref _adaptiveLuminanceEnabled, value);
+    }
+
+    public double AdaptiveLuminanceUpdateIntervalMs
+    {
+        get => _adaptiveLuminanceUpdateIntervalMs;
+        set => this.RaiseAndSetIfChanged(ref _adaptiveLuminanceUpdateIntervalMs, value);
+    }
+
+    public double AdaptiveLuminanceSmoothing
+    {
+        get => _adaptiveLuminanceSmoothing;
+        set => this.RaiseAndSetIfChanged(ref _adaptiveLuminanceSmoothing, value);
+    }
+
     private static readonly Color[] TintPresets =
     {
         Color.FromRgb(0, 136, 255),   // blue
@@ -317,5 +427,11 @@ public class MainWindowViewModel : ViewModelBase
     {
         Color.FromArgb(77, 255, 255, 255), // ~0.3
         Color.FromArgb(77, 0, 0, 0),
+    };
+
+    private static readonly Color[] ProgressiveTintPresets =
+    {
+        Colors.White,
+        Color.FromRgb(128, 128, 128), // Android catalog dark tint: 0xFF808080
     };
 }

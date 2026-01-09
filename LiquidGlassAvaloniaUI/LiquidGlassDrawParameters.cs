@@ -14,6 +14,9 @@ namespace LiquidGlassAvaloniaUI
     {
         public CornerRadius CornerRadius { get; set; }
 
+        public double BackdropZoom { get; set; }
+        public Vector BackdropOffset { get; set; }
+
         public double RefractionHeight { get; set; }
         public double RefractionAmount { get; set; }
         public bool DepthEffect { get; set; }
@@ -29,6 +32,12 @@ namespace LiquidGlassAvaloniaUI
 
         public Color TintColor { get; set; }
         public Color SurfaceColor { get; set; }
+
+        public bool ProgressiveBlurEnabled { get; set; }
+        public double ProgressiveBlurStart { get; set; }
+        public double ProgressiveBlurEnd { get; set; }
+        public Color ProgressiveTintColor { get; set; }
+        public double ProgressiveTintIntensity { get; set; }
 
         public bool HighlightEnabled { get; set; }
         public double HighlightWidth { get; set; }

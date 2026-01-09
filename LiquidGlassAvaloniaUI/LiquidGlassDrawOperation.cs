@@ -147,63 +147,135 @@ namespace LiquidGlassAvaloniaUI
 
             var lensInput = (SKShader)backdropShader;
 
-            var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
-            var refractionAmount = (float)_parameters.RefractionAmount;
-            var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
-
-            SKShader? lensShader = null;
-            if (applyLens)
-            {
-                using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
-                lensUniforms["size"] = new[] { size.Width, size.Height };
-                lensUniforms["cornerRadii"] = cornerRadii;
-                lensUniforms["refractionHeight"] = refractionHeight;
-                lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
-                lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
-                lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
-
-                using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
-                lensChildren["content"] = lensInput;
-
-                lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
-            }
-
-            var baseShader = lensShader ?? lensInput;
-
-            SKShader? gammaShader = null;
+            SKShader? backdropTransformShader = null;
             try
             {
-                var gammaPower = (float)Clamp(_parameters.GammaPower, 0.0, 10.0);
-                if (s_gammaEffect is not null && Math.Abs(gammaPower - 1.0f) > 0.0005f)
+                var zoomValue = _parameters.BackdropZoom;
+                if (zoomValue <= 0.0005 || double.IsNaN(zoomValue) || double.IsInfinity(zoomValue))
+                    zoomValue = 1.0;
+
+                var zoom = (float)Clamp(zoomValue, 0.1, 10.0);
+                var offset = _parameters.BackdropOffset;
+                var needsTransform =
+                    Math.Abs(zoom - 1.0f) > 0.0005f
+                    || Math.Abs(offset.X) > 0.0005
+                    || Math.Abs(offset.Y) > 0.0005;
+
+                if (needsTransform && s_backdropTransformEffect is not null)
                 {
-                    using var uniforms = new SKRuntimeEffectUniforms(s_gammaEffect);
-                    uniforms["power"] = gammaPower;
-                    using var children = new SKRuntimeEffectChildren(s_gammaEffect);
-                    children["content"] = baseShader;
-                    gammaShader = s_gammaEffect.ToShader(uniforms, children);
+                    using var uniforms = new SKRuntimeEffectUniforms(s_backdropTransformEffect);
+                    uniforms["size"] = new[] { size.Width, size.Height };
+                    uniforms["zoom"] = zoom;
+                    uniforms["offset"] = new[] { (float)offset.X, (float)offset.Y };
+
+                    using var children = new SKRuntimeEffectChildren(s_backdropTransformEffect);
+                    children["content"] = lensInput;
+
+                    backdropTransformShader = s_backdropTransformEffect.ToShader(uniforms, children);
+                    if (backdropTransformShader is not null)
+                        lensInput = backdropTransformShader;
                 }
 
-                using var paint = new SKPaint
+                var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
+                var refractionAmount = (float)_parameters.RefractionAmount;
+                var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
+
+                SKShader? lensShader = null;
+                if (applyLens)
                 {
-                    Shader = gammaShader ?? baseShader,
-                    IsAntialias = true
-                };
+                    using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
+                    lensUniforms["size"] = new[] { size.Width, size.Height };
+                    lensUniforms["cornerRadii"] = cornerRadii;
+                    lensUniforms["refractionHeight"] = refractionHeight;
+                    lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
+                    lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
+                    lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
 
-                var rect = SKRect.Create(0, 0, size.Width, size.Height);
-                using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+                    using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
+                    lensChildren["content"] = lensInput;
 
-                canvas.Save();
-                canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
-                canvas.DrawRect(rect, paint);
+                    lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
+                }
 
-                DrawSurfaceOverlay(canvas, rect);
+                var baseShader = lensShader ?? lensInput;
 
-                canvas.Restore();
+                SKShader? progressiveMaskShader = null;
+                try
+                {
+                    if (_parameters.ProgressiveBlurEnabled
+                        && s_progressiveMaskEffect is not null)
+                    {
+                        using var uniforms = new SKRuntimeEffectUniforms(s_progressiveMaskEffect);
+                        uniforms["size"] = new[] { size.Width, size.Height };
+                        uniforms["start"] = (float)Clamp(_parameters.ProgressiveBlurStart, 0.0, 1.0);
+                        uniforms["end"] = (float)Clamp(_parameters.ProgressiveBlurEnd, 0.0, 1.0);
+
+                        var tint = _parameters.ProgressiveTintColor;
+                        uniforms["tint"] = new[]
+                        {
+                            tint.R / 255f,
+                            tint.G / 255f,
+                            tint.B / 255f,
+                            tint.A / 255f
+                        };
+
+                        var tintIntensity = tint.A > 0
+                            ? (float)Clamp(_parameters.ProgressiveTintIntensity, 0.0, 1.0)
+                            : 0.0f;
+                        uniforms["tintIntensity"] = tintIntensity;
+
+                        using var children = new SKRuntimeEffectChildren(s_progressiveMaskEffect);
+                        children["content"] = baseShader;
+
+                        progressiveMaskShader = s_progressiveMaskEffect.ToShader(uniforms, children);
+                        if (progressiveMaskShader is not null)
+                            baseShader = progressiveMaskShader;
+                    }
+
+                    SKShader? gammaShader = null;
+                    try
+                    {
+                        var gammaPower = (float)Clamp(_parameters.GammaPower, 0.0, 10.0);
+                        if (s_gammaEffect is not null && Math.Abs(gammaPower - 1.0f) > 0.0005f)
+                        {
+                            using var uniforms = new SKRuntimeEffectUniforms(s_gammaEffect);
+                            uniforms["power"] = gammaPower;
+                            using var children = new SKRuntimeEffectChildren(s_gammaEffect);
+                            children["content"] = baseShader;
+                            gammaShader = s_gammaEffect.ToShader(uniforms, children);
+                        }
+
+                        using var paint = new SKPaint
+                        {
+                            Shader = gammaShader ?? baseShader,
+                            IsAntialias = true
+                        };
+
+                        var rect = SKRect.Create(0, 0, size.Width, size.Height);
+                        using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+
+                        canvas.Save();
+                        canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
+                        canvas.DrawRect(rect, paint);
+
+                        DrawSurfaceOverlay(canvas, rect);
+
+                        canvas.Restore();
+                    }
+                    finally
+                    {
+                        gammaShader?.Dispose();
+                    }
+                }
+                finally
+                {
+                    progressiveMaskShader?.Dispose();
+                    lensShader?.Dispose();
+                }
             }
             finally
             {
-                gammaShader?.Dispose();
-                lensShader?.Dispose();
+                backdropTransformShader?.Dispose();
             }
 
         }

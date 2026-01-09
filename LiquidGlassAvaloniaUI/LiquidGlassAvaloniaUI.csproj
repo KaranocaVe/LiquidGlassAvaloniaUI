@@ -31,6 +31,10 @@
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassInteractiveHighlight.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassGamma.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassGamma.sksl" />
+      <None Remove="Assets\Shaders\LiquidGlassProgressiveMask.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassProgressiveMask.sksl" />
+      <None Remove="Assets\Shaders\LiquidGlassBackdropTransform.sksl" />
+      <AvaloniaResource Include="Assets\Shaders\LiquidGlassBackdropTransform.sksl" />
       <None Remove="Assets\DisplacementMaps\displacementMap.jpeg" />
       <AvaloniaResource Include="Assets\DisplacementMaps\standard_displacement.jpeg" />
       <None Remove="Assets\DisplacementMaps\polarDisplacementMap.jpeg" />

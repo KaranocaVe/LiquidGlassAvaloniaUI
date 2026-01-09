@@ -247,6 +247,8 @@ namespace LiquidGlassAvaloniaUI
             var parameters = new LiquidGlassDrawParameters
             {
                 CornerRadius = new CornerRadius(CornerRadius),
+                BackdropZoom = 1.0,
+                BackdropOffset = new Vector(0.0, 0.0),
                 RefractionHeight = 12.0,
                 RefractionAmount = DisplacementScale,
                 DepthEffect = Mode == LiquidGlassMode.Prominent,

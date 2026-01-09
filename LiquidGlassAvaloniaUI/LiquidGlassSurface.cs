@@ -15,6 +15,12 @@ namespace LiquidGlassAvaloniaUI
     /// </summary>
     public class LiquidGlassSurface : ContentControl
     {
+        public static readonly StyledProperty<double> BackdropZoomProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(BackdropZoom), 1.0);
+
+        public static readonly StyledProperty<Vector> BackdropOffsetProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Vector>(nameof(BackdropOffset), new Vector(0.0, 0.0));
+
         public static readonly StyledProperty<double> RefractionHeightProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(RefractionHeight), 12.0);
 
@@ -53,6 +59,43 @@ namespace LiquidGlassAvaloniaUI
 
         public static readonly StyledProperty<Color> SurfaceColorProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, Color>(nameof(SurfaceColor), Colors.Transparent);
+
+        public static readonly StyledProperty<bool> ProgressiveBlurEnabledProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, bool>(nameof(ProgressiveBlurEnabled), false);
+
+        /// <summary>
+        /// Progressive blur start position (0..1, relative to control height).
+        /// Above this fraction the blur is fully visible.
+        /// </summary>
+        public static readonly StyledProperty<double> ProgressiveBlurStartProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ProgressiveBlurStart), 0.5);
+
+        /// <summary>
+        /// Progressive blur end position (0..1, relative to control height).
+        /// Below this fraction the blur fades out to fully transparent.
+        /// </summary>
+        public static readonly StyledProperty<double> ProgressiveBlurEndProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ProgressiveBlurEnd), 1.0);
+
+        public static readonly StyledProperty<Color> ProgressiveTintColorProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, Color>(nameof(ProgressiveTintColor), Colors.Transparent);
+
+        public static readonly StyledProperty<double> ProgressiveTintIntensityProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(ProgressiveTintIntensity), 0.8);
+
+        public static readonly StyledProperty<bool> AdaptiveLuminanceEnabledProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, bool>(nameof(AdaptiveLuminanceEnabled), false);
+
+        public static readonly StyledProperty<double> AdaptiveLuminanceUpdateIntervalMsProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(AdaptiveLuminanceUpdateIntervalMs), 250.0);
+
+        public static readonly StyledProperty<double> AdaptiveLuminanceSmoothingProperty =
+            AvaloniaProperty.Register<LiquidGlassSurface, double>(nameof(AdaptiveLuminanceSmoothing), 0.2);
+
+        public static readonly DirectProperty<LiquidGlassSurface, double> AdaptiveLuminanceProperty =
+            AvaloniaProperty.RegisterDirect<LiquidGlassSurface, double>(
+                nameof(AdaptiveLuminance),
+                o => o.AdaptiveLuminance);
 
         public static readonly StyledProperty<bool> HighlightEnabledProperty =
             AvaloniaProperty.Register<LiquidGlassSurface, bool>(nameof(HighlightEnabled), true);
@@ -110,6 +153,8 @@ namespace LiquidGlassAvaloniaUI
 
             AffectsRender<LiquidGlassSurface>(
                 CornerRadiusProperty,
+                BackdropZoomProperty,
+                BackdropOffsetProperty,
                 RefractionHeightProperty,
                 RefractionAmountProperty,
                 DepthEffectProperty,
@@ -123,6 +168,14 @@ namespace LiquidGlassAvaloniaUI
                 BackdropOpacityProperty,
                 TintColorProperty,
                 SurfaceColorProperty,
+                ProgressiveBlurEnabledProperty,
+                ProgressiveBlurStartProperty,
+                ProgressiveBlurEndProperty,
+                ProgressiveTintColorProperty,
+                ProgressiveTintIntensityProperty,
+                AdaptiveLuminanceEnabledProperty,
+                AdaptiveLuminanceUpdateIntervalMsProperty,
+                AdaptiveLuminanceSmoothingProperty,
                 ShadowEnabledProperty,
                 ShadowRadiusProperty,
                 ShadowOffsetProperty,
@@ -135,10 +188,41 @@ namespace LiquidGlassAvaloniaUI
         internal LiquidGlassInteractiveOverlay? InteractiveOverlay { get; private set; }
         internal LiquidGlassFrontOverlay? FrontOverlay { get; private set; }
 
+        private DispatcherTimer? _adaptiveLuminanceTimer;
+        private EventHandler? _adaptiveLuminanceTickHandler;
+        private double _adaptiveLuminance;
+
+        /// <summary>
+        /// Last sampled backdrop luminance (0..1) when <see cref="AdaptiveLuminanceEnabled"/> is true.
+        /// </summary>
+        public double AdaptiveLuminance
+        {
+            get => _adaptiveLuminance;
+            private set => SetAndRaise(AdaptiveLuminanceProperty, ref _adaptiveLuminance, value);
+        }
+
         public Control? Child
         {
             get => Content as Control;
             set => Content = value;
+        }
+
+        /// <summary>
+        /// Magnifier-style zoom applied to backdrop sampling (1 = no zoom).
+        /// </summary>
+        public double BackdropZoom
+        {
+            get => GetValue(BackdropZoomProperty);
+            set => SetValue(BackdropZoomProperty, value);
+        }
+
+        /// <summary>
+        /// Additional translation applied to the sampled backdrop (in DIPs).
+        /// </summary>
+        public Vector BackdropOffset
+        {
+            get => GetValue(BackdropOffsetProperty);
+            set => SetValue(BackdropOffsetProperty, value);
         }
 
         public double RefractionHeight
@@ -223,6 +307,61 @@ namespace LiquidGlassAvaloniaUI
         {
             get => GetValue(SurfaceColorProperty);
             set => SetValue(SurfaceColorProperty, value);
+        }
+
+        /// <summary>
+        /// Enables the progressive blur mask stage (similar to AndroidLiquidGlass’ ProgressiveBlurContent).
+        /// </summary>
+        public bool ProgressiveBlurEnabled
+        {
+            get => GetValue(ProgressiveBlurEnabledProperty);
+            set => SetValue(ProgressiveBlurEnabledProperty, value);
+        }
+
+        public double ProgressiveBlurStart
+        {
+            get => GetValue(ProgressiveBlurStartProperty);
+            set => SetValue(ProgressiveBlurStartProperty, value);
+        }
+
+        public double ProgressiveBlurEnd
+        {
+            get => GetValue(ProgressiveBlurEndProperty);
+            set => SetValue(ProgressiveBlurEndProperty, value);
+        }
+
+        public Color ProgressiveTintColor
+        {
+            get => GetValue(ProgressiveTintColorProperty);
+            set => SetValue(ProgressiveTintColorProperty, value);
+        }
+
+        public double ProgressiveTintIntensity
+        {
+            get => GetValue(ProgressiveTintIntensityProperty);
+            set => SetValue(ProgressiveTintIntensityProperty, value);
+        }
+
+        /// <summary>
+        /// Enables adaptive luminance mode which samples the backdrop behind this surface and adjusts
+        /// rendering parameters to improve legibility (inspired by AndroidLiquidGlass’ AdaptiveLuminanceGlassContent).
+        /// </summary>
+        public bool AdaptiveLuminanceEnabled
+        {
+            get => GetValue(AdaptiveLuminanceEnabledProperty);
+            set => SetValue(AdaptiveLuminanceEnabledProperty, value);
+        }
+
+        public double AdaptiveLuminanceUpdateIntervalMs
+        {
+            get => GetValue(AdaptiveLuminanceUpdateIntervalMsProperty);
+            set => SetValue(AdaptiveLuminanceUpdateIntervalMsProperty, value);
+        }
+
+        public double AdaptiveLuminanceSmoothing
+        {
+            get => GetValue(AdaptiveLuminanceSmoothingProperty);
+            set => SetValue(AdaptiveLuminanceSmoothingProperty, value);
         }
 
         public bool HighlightEnabled
@@ -343,9 +482,11 @@ namespace LiquidGlassAvaloniaUI
 
         internal LiquidGlassDrawParameters CreateDrawParameters()
         {
-            return new LiquidGlassDrawParameters
+            var parameters = new LiquidGlassDrawParameters
             {
                 CornerRadius = CornerRadius,
+                BackdropZoom = BackdropZoom,
+                BackdropOffset = BackdropOffset,
                 RefractionHeight = RefractionHeight,
                 RefractionAmount = RefractionAmount,
                 DepthEffect = DepthEffect,
@@ -359,6 +500,11 @@ namespace LiquidGlassAvaloniaUI
                 BackdropOpacity = BackdropOpacity,
                 TintColor = TintColor,
                 SurfaceColor = SurfaceColor,
+                ProgressiveBlurEnabled = ProgressiveBlurEnabled,
+                ProgressiveBlurStart = ProgressiveBlurStart,
+                ProgressiveBlurEnd = ProgressiveBlurEnd,
+                ProgressiveTintColor = ProgressiveTintColor,
+                ProgressiveTintIntensity = ProgressiveTintIntensity,
                 HighlightEnabled = HighlightEnabled,
                 HighlightWidth = HighlightWidth,
                 HighlightBlurRadius = HighlightBlurRadius,

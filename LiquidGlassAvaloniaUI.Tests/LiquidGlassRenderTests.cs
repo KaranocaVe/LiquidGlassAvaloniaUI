@@ -96,6 +96,32 @@ public class LiquidGlassRenderTests
     }
 
     [AvaloniaFact]
+    public void Progressive_mask_shader_compiles()
+    {
+        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassProgressiveMask.sksl");
+        using var stream = AssetLoader.Open(assetUri);
+        using var reader = new StreamReader(stream);
+        var shaderCode = reader.ReadToEnd();
+
+        var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+        Assert.True(effect is not null, $"Failed to compile LiquidGlassProgressiveMask.sksl: {errorText}");
+        effect!.Dispose();
+    }
+
+    [AvaloniaFact]
+    public void Backdrop_transform_shader_compiles()
+    {
+        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBackdropTransform.sksl");
+        using var stream = AssetLoader.Open(assetUri);
+        using var reader = new StreamReader(stream);
+        var shaderCode = reader.ReadToEnd();
+
+        var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+        Assert.True(effect is not null, $"Failed to compile LiquidGlassBackdropTransform.sksl: {errorText}");
+        effect!.Dispose();
+    }
+
+    [AvaloniaFact]
     public void Interactive_highlight_plus_blend_is_not_full_white()
     {
         var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
@@ -396,6 +422,343 @@ public class LiquidGlassRenderTests
             Assert.Equal(255, tr.Alpha);
             Assert.Equal(255, bl.Alpha);
             Assert.Equal(255, br.Alpha);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void Progressive_blur_mask_makes_bottom_less_blurred_than_top()
+    {
+        var root = new Grid();
+
+        var stripes = new StackPanel { Orientation = Orientation.Horizontal };
+        for (var i = 0; i < 80; i++)
+        {
+            stripes.Children.Add(new Border
+            {
+                Width = 6,
+                Background = i % 2 == 0 ? Brushes.DeepSkyBlue : Brushes.Gold
+            });
+        }
+
+        root.Children.Add(stripes);
+
+        var glass = new LiquidGlassSurface
+        {
+            Width = 320,
+            Height = 180,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(0),
+            RefractionHeight = 0,
+            RefractionAmount = 0,
+            BlurRadius = 24,
+            Vibrancy = 1,
+            Brightness = 0,
+            Contrast = 1,
+            ExposureEv = 0,
+            GammaPower = 1,
+            BackdropOpacity = 1,
+            TintColor = Colors.Transparent,
+            SurfaceColor = Colors.Transparent,
+            ProgressiveBlurEnabled = false,
+            ProgressiveBlurStart = 0.5,
+            ProgressiveBlurEnd = 1.0,
+            ProgressiveTintColor = Colors.White,
+            ProgressiveTintIntensity = 0.0,
+            HighlightEnabled = false,
+            ShadowEnabled = false,
+            InnerShadowEnabled = false
+        };
+
+        root.Children.Add(glass);
+
+        var window = new Window
+        {
+            Width = 540,
+            Height = 320,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+            _ = window.CaptureRenderedFrame();
+            var baseline = window.CaptureRenderedFrame();
+            Assert.NotNull(baseline);
+
+            var topLocal = new Point(glass.Bounds.Width / 2, glass.Bounds.Height * 0.25);
+            var bottomLocal = new Point(glass.Bounds.Width / 2, glass.Bounds.Height * 0.85);
+            var top = glass.TranslatePoint(topLocal, window);
+            var bottom = glass.TranslatePoint(bottomLocal, window);
+            Assert.True(top.HasValue && bottom.HasValue);
+
+            var leftTop = glass.TranslatePoint(new Point(10, topLocal.Y), window);
+            var rightTop = glass.TranslatePoint(new Point(glass.Bounds.Width - 10, topLocal.Y), window);
+            var leftBottom = glass.TranslatePoint(new Point(10, bottomLocal.Y), window);
+            var rightBottom = glass.TranslatePoint(new Point(glass.Bounds.Width - 10, bottomLocal.Y), window);
+            Assert.True(leftTop.HasValue && rightTop.HasValue && leftBottom.HasValue && rightBottom.HasValue);
+
+            var topY = (int)Math.Round(top!.Value.Y);
+            var bottomY = (int)Math.Round(bottom!.Value.Y);
+
+            var xTop0 = (int)Math.Round(leftTop!.Value.X);
+            var xTop1 = (int)Math.Round(rightTop!.Value.X);
+            var xBottom0 = (int)Math.Round(leftBottom!.Value.X);
+            var xBottom1 = (int)Math.Round(rightBottom!.Value.X);
+
+            var topContrast0 = ComputeLineContrast(baseline!, topY, xTop0, xTop1, step: 6);
+            var bottomContrast0 = ComputeLineContrast(baseline!, bottomY, xBottom0, xBottom1, step: 6);
+
+            // With uniform blur, top and bottom should be similar.
+            Assert.True(Math.Abs(topContrast0 - bottomContrast0) < 6.0,
+                $"Expected baseline blur to be uniform (top={topContrast0:F1}, bottom={bottomContrast0:F1}).");
+
+            glass.ProgressiveBlurEnabled = true;
+
+            _ = window.CaptureRenderedFrame();
+            var masked = window.CaptureRenderedFrame();
+            Assert.NotNull(masked);
+
+            var topContrast1 = ComputeLineContrast(masked!, topY, xTop0, xTop1, step: 6);
+            var bottomContrast1 = ComputeLineContrast(masked!, bottomY, xBottom0, xBottom1, step: 6);
+
+            Assert.True(bottomContrast1 > topContrast1 * 1.25,
+                $"Expected progressive mask to make bottom less blurred than top (top={topContrast1:F1}, bottom={bottomContrast1:F1}).");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void Backdrop_zoom_and_offset_change_sampled_backdrop_pixels()
+    {
+        var root = new Grid
+        {
+            Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Colors.Black, 0),
+                    new GradientStop(Colors.White, 1)
+                }
+            }
+        };
+
+        var glass = new LiquidGlassSurface
+        {
+            Width = 260,
+            Height = 180,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(0),
+            BackdropZoom = 1.0,
+            BackdropOffset = new Vector(0.0, 0.0),
+            RefractionHeight = 0,
+            RefractionAmount = 0,
+            BlurRadius = 0,
+            Vibrancy = 1,
+            Brightness = 0,
+            Contrast = 1,
+            ExposureEv = 0,
+            GammaPower = 1,
+            BackdropOpacity = 1,
+            TintColor = Colors.Transparent,
+            SurfaceColor = Colors.Transparent,
+            HighlightEnabled = false,
+            ShadowEnabled = false,
+            InnerShadowEnabled = false
+        };
+
+        root.Children.Add(glass);
+
+        var window = new Window
+        {
+            Width = 520,
+            Height = 320,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+            _ = window.CaptureRenderedFrame();
+            var baseline = window.CaptureRenderedFrame();
+            Assert.NotNull(baseline);
+
+            var sampleLocal = new Point(glass.Bounds.Width * 0.1, glass.Bounds.Height * 0.5);
+            var sample = glass.TranslatePoint(sampleLocal, window);
+            Assert.True(sample.HasValue);
+
+            var sx = (int)Math.Round(sample!.Value.X);
+            var sy = (int)Math.Round(sample.Value.Y);
+
+            var c0 = GetPixel(baseline!, sx, sy);
+            var l0 = c0.r + c0.g + c0.b;
+
+            glass.BackdropZoom = 2.0;
+
+            _ = window.CaptureRenderedFrame();
+            var zoomed = window.CaptureRenderedFrame();
+            Assert.NotNull(zoomed);
+
+            var c1 = GetPixel(zoomed!, sx, sy);
+            var l1 = c1.r + c1.g + c1.b;
+
+            Assert.True(l1 > l0 + 8,
+                $"Expected zoom to change sampled pixels (baseline={c0}, zoomed={c1}).");
+
+            glass.BackdropZoom = 1.0;
+            glass.BackdropOffset = new Vector(60.0, 0.0);
+
+            _ = window.CaptureRenderedFrame();
+            var offsetFrame = window.CaptureRenderedFrame();
+            Assert.NotNull(offsetFrame);
+
+            var c2 = GetPixel(offsetFrame!, sx, sy);
+            var l2 = c2.r + c2.g + c2.b;
+
+            Assert.True(l2 < l0 - 8,
+                $"Expected positive X offset to shift sampled backdrop left and appear darker (baseline={c0}, offset={c2}).");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void Adaptive_luminance_samples_backdrop_and_changes_blur_strength()
+    {
+        var root = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*")
+        };
+
+        var leftStripes = new StackPanel { Orientation = Orientation.Horizontal };
+        var rightStripes = new StackPanel { Orientation = Orientation.Horizontal };
+
+        for (var i = 0; i < 90; i++)
+        {
+            leftStripes.Children.Add(new Border
+            {
+                Width = 6,
+                Background = i % 2 == 0 ? Brushes.Black : Brushes.DimGray
+            });
+
+            rightStripes.Children.Add(new Border
+            {
+                Width = 6,
+                Background = i % 2 == 0 ? Brushes.White : Brushes.LightGray
+            });
+        }
+
+        root.Children.Add(leftStripes);
+        Grid.SetColumn(leftStripes, 0);
+
+        root.Children.Add(rightStripes);
+        Grid.SetColumn(rightStripes, 1);
+
+        static LiquidGlassSurface CreateAdaptiveGlass()
+        {
+            return new LiquidGlassSurface
+            {
+                Width = 220,
+                Height = 150,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                CornerRadius = new CornerRadius(0),
+                RefractionHeight = 0,
+                RefractionAmount = 0,
+                BlurRadius = 8,
+                Vibrancy = 1,
+                Brightness = 0,
+                Contrast = 1,
+                ExposureEv = 0,
+                GammaPower = 1,
+                BackdropOpacity = 1,
+                TintColor = Colors.Transparent,
+                SurfaceColor = Colors.Transparent,
+                HighlightEnabled = false,
+                ShadowEnabled = false,
+                InnerShadowEnabled = false,
+                AdaptiveLuminanceEnabled = true,
+                AdaptiveLuminanceUpdateIntervalMs = 1000,
+                AdaptiveLuminanceSmoothing = 1.0
+            };
+        }
+
+        var leftGlass = CreateAdaptiveGlass();
+        var rightGlass = CreateAdaptiveGlass();
+
+        root.Children.Add(leftGlass);
+        Grid.SetColumn(leftGlass, 0);
+
+        root.Children.Add(rightGlass);
+        Grid.SetColumn(rightGlass, 1);
+
+        var window = new Window
+        {
+            Width = 680,
+            Height = 300,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+            _ = window.CaptureRenderedFrame();
+
+            var tick = typeof(LiquidGlassSurface).GetMethod("TickAdaptiveLuminance", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.NotNull(tick);
+
+            for (var i = 0; i < 6 && rightGlass.AdaptiveLuminance <= 0.5; i++)
+            {
+                tick!.Invoke(leftGlass, null);
+                tick.Invoke(rightGlass, null);
+                _ = window.CaptureRenderedFrame();
+            }
+
+            _ = window.CaptureRenderedFrame();
+            var frame = window.CaptureRenderedFrame();
+            Assert.NotNull(frame);
+
+            Assert.True(leftGlass.AdaptiveLuminance < 0.5, $"Expected left luminance < 0.5 but got {leftGlass.AdaptiveLuminance:F2}.");
+            Assert.True(rightGlass.AdaptiveLuminance > 0.5, $"Expected right luminance > 0.5 but got {rightGlass.AdaptiveLuminance:F2}.");
+
+            var createParams = typeof(LiquidGlassSurface).GetMethod("CreateDrawParameters", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            Assert.NotNull(createParams);
+
+            var leftParams = createParams!.Invoke(leftGlass, null)!;
+            var rightParams = createParams.Invoke(rightGlass, null)!;
+
+            var blurProp = leftParams.GetType().GetProperty("BlurRadius");
+            var contrastProp = leftParams.GetType().GetProperty("Contrast");
+            Assert.NotNull(blurProp);
+            Assert.NotNull(contrastProp);
+
+            var leftBlur = (double)blurProp!.GetValue(leftParams)!;
+            var rightBlur = (double)blurProp.GetValue(rightParams)!;
+
+            var leftContrast = (double)contrastProp!.GetValue(leftParams)!;
+            var rightContrast = (double)contrastProp.GetValue(rightParams)!;
+
+            Assert.True(rightBlur > leftBlur + 1.0, $"Expected brighter backdrop to select higher blur (left={leftBlur:F2}, right={rightBlur:F2}).");
+            Assert.True(Math.Abs(leftContrast - 1.0) < 0.001, $"Expected dark backdrop contrast to remain 1.0 but got {leftContrast:F3}.");
+            Assert.True(rightContrast < 0.95, $"Expected bright backdrop to reduce contrast but got {rightContrast:F3}.");
         }
         finally
         {

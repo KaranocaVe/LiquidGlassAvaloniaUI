@@ -15,6 +15,8 @@ namespace LiquidGlassAvaloniaUI
         private static SKRuntimeEffect? s_highlightEffect;
         private static SKRuntimeEffect? s_gammaEffect;
         private static SKRuntimeEffect? s_interactiveHighlightEffect;
+        private static SKRuntimeEffect? s_progressiveMaskEffect;
+        private static SKRuntimeEffect? s_backdropTransformEffect;
         private static bool s_loaded;
 
         private readonly Rect _bounds;
@@ -80,6 +82,8 @@ namespace LiquidGlassAvaloniaUI
             s_highlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassHighlight.sksl");
             s_gammaEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassGamma.sksl");
             s_interactiveHighlightEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");
+            s_progressiveMaskEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassProgressiveMask.sksl");
+            s_backdropTransformEffect = LoadRuntimeEffect("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBackdropTransform.sksl");
         }
 
         private static SKRuntimeEffect? LoadRuntimeEffect(string assetUriString)

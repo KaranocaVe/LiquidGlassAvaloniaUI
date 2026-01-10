@@ -7,6 +7,15 @@ namespace AvaloniaApplication1.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    public MainWindowViewModel()
+    {
+        ApplyPresetShowcase();
+    }
+
+    private int _backgroundIndex = 0; // 0 = wallpaper, 1 = photo, 2 = distortion
+    private bool _showColorGlows = true;
+    private bool _showVignette = true;
+
     private double _backdropZoom = 1.0;
     private double _backdropOffsetX = 0.0;
     private double _backdropOffsetY = 0.0;
@@ -63,6 +72,34 @@ public class MainWindowViewModel : ViewModelBase
     private bool _adaptiveLuminanceEnabled;
     private double _adaptiveLuminanceUpdateIntervalMs = 250.0;
     private double _adaptiveLuminanceSmoothing = 0.2;
+
+    public int BackgroundIndex
+    {
+        get => _backgroundIndex;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _backgroundIndex, value);
+            this.RaisePropertyChanged(nameof(UseWallpaperBackground));
+            this.RaisePropertyChanged(nameof(UsePhotoBackground));
+            this.RaisePropertyChanged(nameof(UseDistortionBackground));
+        }
+    }
+
+    public bool UseWallpaperBackground => BackgroundIndex == 0;
+    public bool UsePhotoBackground => BackgroundIndex == 1;
+    public bool UseDistortionBackground => BackgroundIndex == 2;
+
+    public bool ShowColorGlows
+    {
+        get => _showColorGlows;
+        set => this.RaiseAndSetIfChanged(ref _showColorGlows, value);
+    }
+
+    public bool ShowVignette
+    {
+        get => _showVignette;
+        set => this.RaiseAndSetIfChanged(ref _showVignette, value);
+    }
 
     public double BackdropZoom
     {
@@ -432,6 +469,278 @@ public class MainWindowViewModel : ViewModelBase
     private static readonly Color[] ProgressiveTintPresets =
     {
         Colors.White,
-        Color.FromRgb(128, 128, 128), // Android catalog dark tint: 0xFF808080
+        Color.FromRgb(128, 128, 128),
     };
+
+    public void ApplyPresetDefaults()
+    {
+        EnableTint = false;
+        TintPresetIndex = 0;
+        EnableSurface = false;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.0;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = 0.0;
+
+        RefractionHeight = 12.0;
+        RefractionAmount = 24.0;
+        DepthEffect = false;
+        ChromaticAberration = false;
+
+        BlurRadius = 2.0;
+        Vibrancy = 1.5;
+        Brightness = 0.0;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = false;
+        ProgressiveBlurStart = 0.5;
+        ProgressiveBlurEnd = 1.0;
+        ProgressiveTintIntensity = 0.8;
+        EnableProgressiveTint = true;
+        ProgressiveTintPresetIndex = 1;
+
+        AdaptiveLuminanceEnabled = false;
+        AdaptiveLuminanceUpdateIntervalMs = 250.0;
+        AdaptiveLuminanceSmoothing = 0.2;
+
+        HighlightEnabled = true;
+        HighlightWidth = 0.5;
+        HighlightBlurRadius = 0.25;
+        HighlightOpacity = 0.5;
+        HighlightAngle = 45.0;
+        HighlightFalloff = 1.0;
+
+        ShadowEnabled = true;
+        ShadowRadius = 24.0;
+        ShadowOffsetX = 0.0;
+        ShadowOffsetY = 4.0;
+        ShadowOpacity = 1.0;
+        ShadowColor = Color.FromArgb(26, 0, 0, 0);
+
+        InnerShadowEnabled = false;
+        InnerShadowRadius = 24.0;
+        InnerShadowOffsetX = 0.0;
+        InnerShadowOffsetY = 24.0;
+        InnerShadowOpacity = 1.0;
+        InnerShadowColor = Color.FromArgb(38, 0, 0, 0);
+    }
+
+    public void ApplyPresetShowcase()
+    {
+        BackgroundIndex = 0;
+        ShowColorGlows = true;
+        ShowVignette = true;
+
+        EnableTint = true;
+        TintPresetIndex = 0;
+        EnableSurface = true;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.0;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = 0.0;
+
+        RefractionHeight = 12.0;
+        RefractionAmount = 28.0;
+        DepthEffect = true;
+        ChromaticAberration = true;
+
+        BlurRadius = 8.0;
+        Vibrancy = 1.5;
+        Brightness = 0.08;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = false;
+        AdaptiveLuminanceEnabled = false;
+
+        HighlightEnabled = true;
+        HighlightWidth = 0.7;
+        HighlightBlurRadius = 0.45;
+        HighlightOpacity = 0.6;
+        HighlightAngle = 55.0;
+        HighlightFalloff = 1.0;
+
+        ShadowEnabled = true;
+        ShadowRadius = 28.0;
+        ShadowOffsetX = 0.0;
+        ShadowOffsetY = 10.0;
+        ShadowOpacity = 1.0;
+        ShadowColor = Color.FromArgb(70, 0, 0, 0);
+
+        InnerShadowEnabled = false;
+    }
+
+    public void ApplyPresetMagnifier()
+    {
+        EnableTint = false;
+        TintPresetIndex = 0;
+        EnableSurface = false;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.5;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = -80.0;
+
+        RefractionHeight = 8.0;
+        RefractionAmount = 24.0;
+        DepthEffect = true;
+        ChromaticAberration = true;
+
+        BlurRadius = 0.0;
+        Vibrancy = 1.0;
+        Brightness = 0.0;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = false;
+        AdaptiveLuminanceEnabled = false;
+
+        HighlightEnabled = true;
+        HighlightOpacity = 0.4;
+        HighlightWidth = 0.5;
+        HighlightBlurRadius = 0.35;
+        HighlightAngle = 55.0;
+        HighlightFalloff = 1.2;
+
+        ShadowEnabled = true;
+        ShadowRadius = 26.0;
+        ShadowOffsetX = 0.0;
+        ShadowOffsetY = 12.0;
+        ShadowOpacity = 1.0;
+        ShadowColor = Color.FromArgb(90, 0, 0, 0);
+
+        InnerShadowEnabled = true;
+        InnerShadowRadius = 16.0;
+        InnerShadowOffsetX = 0.0;
+        InnerShadowOffsetY = 10.0;
+        InnerShadowOpacity = 1.0;
+        InnerShadowColor = Color.FromArgb(110, 0, 0, 0);
+    }
+
+    public void ApplyPresetProgressiveBlur()
+    {
+        EnableTint = false;
+        TintPresetIndex = 0;
+        EnableSurface = false;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.0;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = 0.0;
+
+        RefractionHeight = 0.0;
+        RefractionAmount = 0.0;
+        DepthEffect = false;
+        ChromaticAberration = false;
+
+        BlurRadius = 4.0;
+        Vibrancy = 1.0;
+        Brightness = 0.0;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = true;
+        ProgressiveBlurStart = 0.5;
+        ProgressiveBlurEnd = 1.0;
+        EnableProgressiveTint = true;
+        ProgressiveTintPresetIndex = 1;
+        ProgressiveTintIntensity = 0.8;
+
+        AdaptiveLuminanceEnabled = false;
+
+        HighlightEnabled = false;
+        ShadowEnabled = false;
+        InnerShadowEnabled = false;
+    }
+
+    public void ApplyPresetDistortion()
+    {
+        BackgroundIndex = 2;
+        ShowColorGlows = false;
+        ShowVignette = false;
+
+        EnableTint = false;
+        TintPresetIndex = 0;
+        EnableSurface = false;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.0;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = 0.0;
+
+        RefractionHeight = 18.0;
+        RefractionAmount = 46.0;
+        DepthEffect = true;
+        ChromaticAberration = true;
+
+        BlurRadius = 0.0;
+        Vibrancy = 1.0;
+        Brightness = 0.0;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = false;
+        AdaptiveLuminanceEnabled = false;
+
+        HighlightEnabled = false;
+        ShadowEnabled = false;
+        InnerShadowEnabled = false;
+    }
+
+    public void ApplyPresetAdaptiveLuminance()
+    {
+        EnableTint = false;
+        TintPresetIndex = 0;
+        EnableSurface = false;
+        SurfacePresetIndex = 0;
+
+        BackdropZoom = 1.0;
+        BackdropOffsetX = 0.0;
+        BackdropOffsetY = 0.0;
+
+        // Lens stays on; brightness/contrast/blur are overridden.
+        RefractionHeight = 24.0;
+        RefractionAmount = 28.0;
+        DepthEffect = true;
+        ChromaticAberration = false;
+
+        BlurRadius = 8.0;
+        Vibrancy = 1.5;
+        Brightness = 0.0;
+        Contrast = 1.0;
+        ExposureEv = 0.0;
+        GammaPower = 1.0;
+        BackdropOpacity = 1.0;
+
+        ProgressiveBlurEnabled = false;
+
+        AdaptiveLuminanceEnabled = true;
+        AdaptiveLuminanceUpdateIntervalMs = 250.0;
+        AdaptiveLuminanceSmoothing = 0.25;
+
+        HighlightEnabled = true;
+        HighlightOpacity = 0.5;
+
+        ShadowEnabled = true;
+        ShadowRadius = 24.0;
+        ShadowOffsetX = 0.0;
+        ShadowOffsetY = 8.0;
+        ShadowOpacity = 1.0;
+        ShadowColor = Color.FromArgb(70, 0, 0, 0);
+
+        InnerShadowEnabled = false;
+    }
 }

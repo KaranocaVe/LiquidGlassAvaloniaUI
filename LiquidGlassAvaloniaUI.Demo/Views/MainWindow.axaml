@@ -9,11 +9,170 @@
         Height="800"
         Background="#FF0B0C10">
 
-    <Grid>
-        <Image Source="avares://LiquidGlassAvaloniaUI.Demo/Assets/background.jpg"
-               Stretch="UniformToFill"
-               Opacity="0.95" />
-        <Rectangle Fill="#66000000" />
+	    <Grid>
+	        <Image Source="avares://LiquidGlassAvaloniaUI.Demo/Assets/Wallpaper.png"
+	               Stretch="UniformToFill"
+	               Opacity="1"
+	               IsVisible="{Binding UseWallpaperBackground}" />
+	        <Image Source="avares://LiquidGlassAvaloniaUI.Demo/Assets/background.jpg"
+	               Stretch="UniformToFill"
+	               Opacity="1"
+	               IsVisible="{Binding UsePhotoBackground}" />
+	        <Border IsVisible="{Binding UseDistortionBackground}">
+	            <Border.Background>
+	                <VisualBrush TileMode="Tile"
+	                             Stretch="Fill"
+	                             AlignmentX="Left"
+	                             AlignmentY="Top"
+	                             DestinationRect="0,0,240,240">
+	                    <VisualBrush.Visual>
+	                        <Grid Width="240"
+	                              Height="240">
+	                            <Rectangle>
+	                                <Rectangle.Fill>
+	                                    <LinearGradientBrush StartPoint="0,0"
+	                                                         EndPoint="1,1">
+	                                        <GradientStop Color="#FF001DFF"
+	                                                      Offset="0" />
+	                                        <GradientStop Color="#FFFF007A"
+	                                                      Offset="0.52" />
+	                                        <GradientStop Color="#FFFF8D28"
+	                                                      Offset="1" />
+	                                    </LinearGradientBrush>
+	                                </Rectangle.Fill>
+	                            </Rectangle>
+	                            <Rectangle Fill="#FF0B0C10"
+	                                       Opacity="0.45" />
+
+	                            <Path Data="M0 60 H240 M0 120 H240 M0 180 H240 M60 0 V240 M120 0 V240 M180 0 V240"
+	                                  Stroke="#80FFFFFF"
+	                                  StrokeThickness="1" />
+	                            <Path Data="M0 120 H240 M120 0 V240"
+	                                  Stroke="#E6FFFFFF"
+	                                  StrokeThickness="2" />
+	                            <Path Data="M0 0 L240 240 M240 0 L0 240"
+	                                  Stroke="#40FFFFFF"
+	                                  StrokeThickness="1" />
+
+	                            <Ellipse Width="24"
+	                                     Height="24"
+	                                     Fill="#FF00E5FF"
+	                                     HorizontalAlignment="Left"
+	                                     VerticalAlignment="Top"
+	                                     Margin="18" />
+	                            <Ellipse Width="24"
+	                                     Height="24"
+	                                     Fill="#FFFF007A"
+	                                     HorizontalAlignment="Right"
+	                                     VerticalAlignment="Top"
+	                                     Margin="18" />
+	                            <Ellipse Width="24"
+	                                     Height="24"
+	                                     Fill="#FFFF8D28"
+	                                     HorizontalAlignment="Left"
+	                                     VerticalAlignment="Bottom"
+	                                     Margin="18" />
+	                            <Ellipse Width="24"
+	                                     Height="24"
+	                                     Fill="#FF00C8A0"
+	                                     HorizontalAlignment="Right"
+	                                     VerticalAlignment="Bottom"
+	                                     Margin="18" />
+
+	                            <TextBlock Text="DISTORTION"
+	                                       FontSize="24"
+	                                       FontWeight="Black"
+	                                       Foreground="#2AFFFFFF"
+	                                       HorizontalAlignment="Center"
+	                                       VerticalAlignment="Center" />
+	                        </Grid>
+	                    </VisualBrush.Visual>
+	                </VisualBrush>
+	            </Border.Background>
+	        </Border>
+
+	        <!-- Add color + contrast so the glass distortion reads clearly (less “grey wash”). -->
+	        <Canvas IsHitTestVisible="False"
+	                IsVisible="{Binding ShowColorGlows}">
+	            <TextBlock Text="LIQUID"
+	                       FontSize="180"
+	                       FontWeight="Black"
+	                       Foreground="#18FFFFFF"
+	                       Canvas.Left="28"
+	                       Canvas.Top="40" />
+	            <TextBlock Text="GLASS"
+	                       FontSize="180"
+	                       FontWeight="Black"
+	                       Foreground="#12FFFFFF"
+	                       Canvas.Left="28"
+	                       Canvas.Top="190" />
+
+	            <Ellipse Width="760"
+	                     Height="760"
+	                     Canvas.Left="-260"
+	                     Canvas.Top="-320">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.35,0.35"
+                                         GradientOrigin="0.35,0.35"
+                                         RadiusX="90%"
+                                         RadiusY="90%">
+                        <GradientStop Color="#B30091FF"
+                                      Offset="0" />
+                        <GradientStop Color="#000091FF"
+                                      Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <Ellipse Width="820"
+                     Height="820"
+                     Canvas.Left="640"
+                     Canvas.Top="140">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.6,0.4"
+                                         GradientOrigin="0.6,0.4"
+                                         RadiusX="95%"
+                                         RadiusY="95%">
+                        <GradientStop Color="#A0FF007A"
+                                      Offset="0" />
+                        <GradientStop Color="#00FF007A"
+                                      Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+
+            <Ellipse Width="620"
+                     Height="620"
+                     Canvas.Left="40"
+                     Canvas.Top="520">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="0.4,0.4"
+                                         GradientOrigin="0.4,0.4"
+                                         RadiusX="90%"
+                                         RadiusY="90%">
+                        <GradientStop Color="#90FF8D28"
+                                      Offset="0" />
+                        <GradientStop Color="#00FF8D28"
+                                      Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+        </Canvas>
+
+        <!-- Soft vignette for text legibility without flattening colors. -->
+        <Rectangle IsVisible="{Binding ShowVignette}">
+            <Rectangle.Fill>
+                <RadialGradientBrush Center="0.5,0.4"
+                                     GradientOrigin="0.5,0.4"
+                                     RadiusX="95%"
+                                     RadiusY="95%">
+                    <GradientStop Color="#00000000"
+                                  Offset="0" />
+                    <GradientStop Color="#4D000000"
+                                  Offset="1" />
+                </RadialGradientBrush>
+            </Rectangle.Fill>
+        </Rectangle>
 
         <Grid Margin="24"
               ColumnDefinitions="*,360"
@@ -280,23 +439,93 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Controls -->
-            <Border Grid.Row="1"
-                    Grid.Column="1"
-                    Background="#42000000"
-                    CornerRadius="18"
-                    Padding="16">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
-                              VerticalScrollBarVisibility="Auto">
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="Controls"
-                                   FontSize="16"
-                                   FontWeight="Bold"
-                                   Foreground="White" />
+	            <!-- Controls -->
+	            <local:LiquidGlassSurface Grid.Row="1"
+	                                      Grid.Column="1"
+	                                      CornerRadius="18"
+	                                      RefractionHeight="0"
+	                                      RefractionAmount="0"
+	                                      BlurRadius="18"
+	                                      Vibrancy="1.2"
+	                                      Brightness="0.08"
+	                                      Contrast="1"
+	                                      ExposureEv="0"
+	                                      GammaPower="1"
+	                                      BackdropOpacity="0.92"
+	                                      SurfaceColor="#10000000"
+	                                      HighlightEnabled="True"
+	                                      HighlightWidth="0.35"
+	                                      HighlightBlurRadius="0.35"
+	                                      HighlightOpacity="0.35"
+	                                      HighlightAngle="60"
+	                                      HighlightFalloff="1.2"
+	                                      ShadowEnabled="True"
+	                                      ShadowRadius="26"
+	                                      ShadowOffset="0,10"
+	                                      ShadowColor="#66000000"
+	                                      ShadowOpacity="1">
+	                <ScrollViewer Padding="16"
+	                              HorizontalScrollBarVisibility="Disabled"
+	                              VerticalScrollBarVisibility="Auto">
+	                    <StackPanel Spacing="12">
+	                        <TextBlock Text="Controls"
+	                                   FontSize="16"
+	                                   FontWeight="Bold"
+	                                   Foreground="White" />
 
-                        <Grid ColumnDefinitions="150,*,70"
-                              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
-                              RowSpacing="10"
+	                        <Border Background="#12FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
+	                            <StackPanel Spacing="10">
+	                                <TextBlock Text="Presets"
+	                                           FontSize="13"
+	                                           FontWeight="SemiBold"
+	                                           Foreground="White" />
+		                                <WrapPanel ItemSpacing="8" LineSpacing="8">
+		                                    <Button Content="Showcase"
+		                                            Click="OnPresetShowcaseClick" />
+			                                    <Button Content="Defaults"
+			                                            Click="OnPresetDefaultsClick" />
+		                                    <Button Content="Magnifier"
+		                                            Click="OnPresetMagnifierClick" />
+		                                    <Button Content="Distortion"
+		                                            Click="OnPresetDistortionClick" />
+		                                    <Button Content="Progressive"
+		                                            Click="OnPresetProgressiveClick" />
+		                                    <Button Content="Adaptive"
+		                                            Click="OnPresetAdaptiveClick" />
+		                                </WrapPanel>
+	                            </StackPanel>
+	                        </Border>
+
+	                        <Border Background="#12FFFFFF"
+	                                CornerRadius="12"
+	                                Padding="12">
+	                            <StackPanel Spacing="10">
+	                                <TextBlock Text="Scene"
+	                                           FontSize="13"
+	                                           FontWeight="SemiBold"
+	                                           Foreground="White" />
+		                                <ComboBox SelectedIndex="{Binding BackgroundIndex}"
+		                                          Width="220">
+		                                    <ComboBoxItem Content="Wallpaper" />
+		                                    <ComboBoxItem Content="Photo" />
+		                                    <ComboBoxItem Content="Distortion (通透)" />
+		                                </ComboBox>
+		                                <StackPanel Orientation="Horizontal" Spacing="14">
+		                                    <CheckBox Content="Glows"
+		                                              IsChecked="{Binding ShowColorGlows}"
+		                                              Foreground="White" />
+	                                    <CheckBox Content="Vignette"
+	                                              IsChecked="{Binding ShowVignette}"
+	                                              Foreground="White" />
+	                                </StackPanel>
+	                            </StackPanel>
+	                        </Border>
+
+	                        <Grid ColumnDefinitions="150,*,70"
+	                              RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+	                              RowSpacing="10"
                               ColumnSpacing="10">
                             <TextBlock Grid.Row="0"
                                        Grid.Column="0"
@@ -1029,9 +1258,9 @@
                                 </ComboBox>
                             </StackPanel>
                         </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
+	                    </StackPanel>
+	                </ScrollViewer>
+	            </local:LiquidGlassSurface>
         </Grid>
     </Grid>
 </Window>

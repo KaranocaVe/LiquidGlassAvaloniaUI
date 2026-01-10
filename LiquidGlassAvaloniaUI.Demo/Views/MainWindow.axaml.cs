@@ -44,4 +44,52 @@ public partial class MainWindow : Window
         vm.EnableSurface = true;
         vm.SurfacePresetIndex = (vm.SurfacePresetIndex + 1) % 2;
     }
+
+    private void OnPresetDefaultsClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetDefaults();
+    }
+
+    private void OnPresetShowcaseClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetShowcase();
+    }
+
+    private void OnPresetMagnifierClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetMagnifier();
+    }
+
+    private void OnPresetProgressiveClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetProgressiveBlur();
+    }
+
+    private void OnPresetDistortionClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetDistortion();
+    }
+
+    private void OnPresetAdaptiveClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+            return;
+
+        vm.ApplyPresetAdaptiveLuminance();
+    }
 }

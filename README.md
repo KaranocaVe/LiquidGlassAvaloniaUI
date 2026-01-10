@@ -6,6 +6,8 @@ An AvaloniaUI “liquid glass” backdrop effect: vibrancy → blur → rounded-
 
 This project implements a composited backdrop pipeline using AvaloniaUI + SkiaSharp (`SKRuntimeEffect`) on Avalonia’s Skia renderer.
 
+Requires the Skia renderer (`Avalonia.Skia`).
+
 ![Showcase](docs/screenshots/showcase.png)
 
 More headless-rendered examples:
@@ -24,11 +26,13 @@ More headless-rendered examples:
 2. Open the solution in your IDE
 3. Run the `LiquidGlassAvaloniaUI.Demo` project to see the effects in action
 
+The demo includes a floating draggable glass card for quick testing.
+
 To validate rendering headlessly and optionally emit PNGs:
 
-- `dotnet test LiquidGlassAvaloniaUI/LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj -c Release`
+- `dotnet test LiquidGlassAvaloniaUI.sln -c Release`
 - (optional) `LIQUIDGLASS_TEST_OUTPUT_DIR=./artifacts` to write `with-glass.png` / `without-glass.png`
-- (optional) `LIQUIDGLASS_README_SCREENSHOTS_DIR=./docs/screenshots dotnet test LiquidGlassAvaloniaUI/LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj -c Release --filter FullyQualifiedName~ReadmeScreenshotGenerator` to (re)generate the screenshots above
+- (optional) `LIQUIDGLASS_README_SCREENSHOTS_DIR=./docs/screenshots dotnet test LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj -c Release --filter FullyQualifiedName~ReadmeScreenshotGenerator` to (re)generate the screenshots above
 
 ## 📖 Usage
 

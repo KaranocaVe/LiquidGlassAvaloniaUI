@@ -10,7 +10,7 @@
         Background="#FF0B0C10">
 
 	    <Grid>
-	        <Image Source="avares://LiquidGlassAvaloniaUI.Demo/Assets/Wallpaper.png"
+	        <Image Source="avares://LiquidGlassAvaloniaUI.Demo/Assets/iClarified-macOS-Tahoe-Default-Light-4K.jpg"
 	               Stretch="UniformToFill"
 	               Opacity="1"
 	               IsVisible="{Binding UseWallpaperBackground}" />
@@ -1262,5 +1262,90 @@
 	                </ScrollViewer>
 	            </local:LiquidGlassSurface>
         </Grid>
+
+	    <!-- Floating draggable card (always on top) -->
+	    <Canvas x:Name="OverlayCanvas"
+	            Panel.ZIndex="999"
+	            ClipToBounds="True">
+		    <local:LiquidGlassSurface x:Name="FloatingCard"
+		                              Width="320"
+		                              Height="220"
+		                              CornerRadius="28"
+		                              Canvas.Left="70"
+		                              Canvas.Top="90"
+		                              Cursor="SizeAll"
+		                              BackdropZoom="{Binding BackdropZoom}"
+		                              BackdropOffset="{Binding BackdropOffset}"
+		                              RefractionHeight="{Binding RefractionHeight}"
+		                              RefractionAmount="{Binding RefractionAmount}"
+		                              DepthEffect="{Binding DepthEffect}"
+		                              ChromaticAberration="{Binding ChromaticAberration}"
+		                              BlurRadius="{Binding BlurRadius}"
+		                              Vibrancy="{Binding Vibrancy}"
+		                              Brightness="{Binding Brightness}"
+		                              Contrast="{Binding Contrast}"
+		                              ExposureEv="{Binding ExposureEv}"
+		                              GammaPower="{Binding GammaPower}"
+		                              BackdropOpacity="{Binding BackdropOpacity}"
+		                              TintColor="{Binding TintColor}"
+		                              SurfaceColor="{Binding SurfaceColor}"
+		                              ProgressiveBlurEnabled="{Binding ProgressiveBlurEnabled}"
+		                              ProgressiveBlurStart="{Binding ProgressiveBlurStart}"
+		                              ProgressiveBlurEnd="{Binding ProgressiveBlurEnd}"
+		                              ProgressiveTintColor="{Binding ProgressiveTintColor}"
+		                              ProgressiveTintIntensity="{Binding ProgressiveTintIntensity}"
+		                              AdaptiveLuminanceEnabled="{Binding AdaptiveLuminanceEnabled}"
+		                              AdaptiveLuminanceUpdateIntervalMs="{Binding AdaptiveLuminanceUpdateIntervalMs}"
+		                              AdaptiveLuminanceSmoothing="{Binding AdaptiveLuminanceSmoothing}"
+		                              HighlightEnabled="{Binding HighlightEnabled}"
+		                              HighlightWidth="{Binding HighlightWidth}"
+		                              HighlightBlurRadius="{Binding HighlightBlurRadius}"
+		                              HighlightOpacity="{Binding HighlightOpacity}"
+		                              HighlightAngle="{Binding HighlightAngle}"
+		                              HighlightFalloff="{Binding HighlightFalloff}"
+		                              ShadowEnabled="{Binding ShadowEnabled}"
+		                              ShadowRadius="{Binding ShadowRadius}"
+		                              ShadowOffset="{Binding ShadowOffset}"
+		                              ShadowColor="{Binding ShadowColor}"
+		                              ShadowOpacity="{Binding ShadowOpacity}"
+		                              InnerShadowEnabled="{Binding InnerShadowEnabled}"
+		                              InnerShadowRadius="{Binding InnerShadowRadius}"
+		                              InnerShadowOffset="{Binding InnerShadowOffset}"
+		                              InnerShadowColor="{Binding InnerShadowColor}"
+		                              InnerShadowOpacity="{Binding InnerShadowOpacity}"
+		                              PointerPressed="OnFloatingCardPointerPressed"
+		                              PointerMoved="OnFloatingCardPointerMoved"
+		                              PointerReleased="OnFloatingCardPointerReleased"
+		                              PointerCaptureLost="OnFloatingCardPointerCaptureLost">
+			    <Grid Margin="18"
+			          RowDefinitions="Auto,Auto,*,Auto"
+			          RowSpacing="10">
+				    <TextBlock Text="Floating glass card"
+				               FontSize="16"
+				               FontWeight="SemiBold"
+				               Foreground="White" />
+
+				    <TextBlock Grid.Row="1"
+				               Text="Drag me around (top layer)."
+				               FontSize="12"
+				               Foreground="#CCFFFFFF" />
+
+				    <Border Grid.Row="2"
+				            Background="#14FFFFFF"
+				            CornerRadius="14"
+				            Padding="12">
+					    <TextBlock Text="Independent overlay; stays above the demo UI."
+					               TextWrapping="Wrap"
+					               FontSize="12"
+					               Foreground="#B3FFFFFF" />
+				    </Border>
+
+				    <TextBlock Grid.Row="3"
+				               Text="Tip: tweak refraction / blur / CA on the right."
+				               FontSize="11"
+				               Foreground="#80FFFFFF" />
+			    </Grid>
+		    </local:LiquidGlassSurface>
+	    </Canvas>
     </Grid>
 </Window>

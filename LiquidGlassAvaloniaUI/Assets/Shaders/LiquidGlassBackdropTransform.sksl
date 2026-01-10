@@ -16,4 +16,3 @@ half4 main(float2 coord) {
     float2 sampleCoord = center + (coord - center - offset) / z;
     return content.eval(sampleCoord);
 }
-

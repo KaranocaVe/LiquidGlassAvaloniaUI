@@ -8,7 +8,7 @@ uniform float4 cornerRadii;          // [topLeft, topRight, bottomRight, bottomL
 uniform float refractionHeight;      // Edge band thickness (DIP)
 uniform float refractionAmount;      // Refraction strength (DIP)
 uniform float depthEffect;           // 0..1
-uniform float chromaticAberration;   // 0..1 (Android uses 0/1)
+uniform float chromaticAberration;   // 0..1
 
 float radiusAt(float2 centeredCoord, float4 radii) {
     if (centeredCoord.x >= 0.0) {

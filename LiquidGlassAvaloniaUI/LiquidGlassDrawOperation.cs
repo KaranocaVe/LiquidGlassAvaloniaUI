@@ -187,7 +187,8 @@ namespace LiquidGlassAvaloniaUI
                     lensUniforms["size"] = new[] { size.Width, size.Height };
                     lensUniforms["cornerRadii"] = cornerRadii;
                     lensUniforms["refractionHeight"] = refractionHeight;
-                    lensUniforms["refractionAmount"] = -refractionAmount; // Android uses negative refraction amount
+                    // The lens shader expects a negative refraction amount.
+                    lensUniforms["refractionAmount"] = -refractionAmount;
                     lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
                     lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
 

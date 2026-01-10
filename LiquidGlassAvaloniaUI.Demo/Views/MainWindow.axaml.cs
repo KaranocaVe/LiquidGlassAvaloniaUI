@@ -1,8 +1,10 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 #if DEBUG
 using Avalonia.Diagnostics;
 #endif
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using LiquidGlassAvaloniaUI;
@@ -12,15 +14,23 @@ namespace AvaloniaApplication1.Views;
 
 public partial class MainWindow : Window
 {
+    private bool _isFloatingCardDragging;
+    private Point _floatingCardDragStartPointer;
+    private double _floatingCardDragStartLeft;
+    private double _floatingCardDragStartTop;
+    private Canvas? _overlayCanvas;
+    private LiquidGlassSurface? _floatingCard;
+
     public MainWindow()
     {
         InitializeComponent();
-        ShaderDebugger.TestShaderLoading();
     }
 
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
+        _overlayCanvas = this.FindControl<Canvas>("OverlayCanvas");
+        _floatingCard = this.FindControl<LiquidGlassSurface>("FloatingCard");
 
 #if DEBUG
         this.AttachDevTools();
@@ -91,5 +101,84 @@ public partial class MainWindow : Window
             return;
 
         vm.ApplyPresetAdaptiveLuminance();
+    }
+
+    private void OnFloatingCardPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+
+        if (_overlayCanvas is null || _floatingCard is null)
+            return;
+
+        _isFloatingCardDragging = true;
+        _floatingCardDragStartPointer = e.GetPosition(_overlayCanvas);
+
+        var left = Canvas.GetLeft(_floatingCard);
+        var top = Canvas.GetTop(_floatingCard);
+        _floatingCardDragStartLeft = double.IsNaN(left) ? 0.0 : left;
+        _floatingCardDragStartTop = double.IsNaN(top) ? 0.0 : top;
+
+        e.Pointer.Capture(_floatingCard);
+        e.Handled = true;
+    }
+
+    private void OnFloatingCardPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isFloatingCardDragging)
+            return;
+
+        if (_overlayCanvas is null || _floatingCard is null)
+            return;
+
+        if (!ReferenceEquals(e.Pointer.Captured, _floatingCard))
+            return;
+
+        var p = e.GetPosition(_overlayCanvas);
+        var dx = p.X - _floatingCardDragStartPointer.X;
+        var dy = p.Y - _floatingCardDragStartPointer.Y;
+
+        var left = _floatingCardDragStartLeft + dx;
+        var top = _floatingCardDragStartTop + dy;
+
+        var overlayBounds = _overlayCanvas.Bounds;
+        var cardBounds = _floatingCard.Bounds;
+        if (overlayBounds.Width > 0
+            && overlayBounds.Height > 0
+            && cardBounds.Width > 0
+            && cardBounds.Height > 0)
+        {
+            var maxLeft = Math.Max(0.0, overlayBounds.Width - cardBounds.Width);
+            var maxTop = Math.Max(0.0, overlayBounds.Height - cardBounds.Height);
+            left = Math.Clamp(left, 0.0, maxLeft);
+            top = Math.Clamp(top, 0.0, maxTop);
+        }
+
+        Canvas.SetLeft(_floatingCard, left);
+        Canvas.SetTop(_floatingCard, top);
+        e.Handled = true;
+    }
+
+    private void OnFloatingCardPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isFloatingCardDragging)
+            return;
+
+        EndFloatingCardDrag(e.Pointer);
+        e.Handled = true;
+    }
+
+    private void OnFloatingCardPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_isFloatingCardDragging)
+            return;
+
+        EndFloatingCardDrag(pointer: null);
+    }
+
+    private void EndFloatingCardDrag(IPointer? pointer)
+    {
+        _isFloatingCardDragging = false;
+        pointer?.Capture(null);
     }
 }

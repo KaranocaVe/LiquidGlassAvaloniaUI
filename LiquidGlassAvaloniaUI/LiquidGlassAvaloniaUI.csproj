@@ -9,24 +9,15 @@
 
     <ItemGroup>
       <PackageReference Include="Avalonia" Version="11.3.10" />
-      <PackageReference Include="Avalonia.Diagnostics" Version="11.3.10" />
       <PackageReference Include="Avalonia.Skia" Version="11.3.10" />
       <PackageReference Include="SkiaSharp" Version="3.119.1" />
     </ItemGroup>
 
     <ItemGroup>
-<!--      <None Remove="Assets\FrostedGlassShader.sksl" />-->
-<!--      <AvaloniaResource Include="Assets\FrostedGlassShader.sksl" />-->
-<!--      <None Remove="Assets\LiquidGlassShader.sksl" />-->
-<!--      <AvaloniaResource Include="Assets\LiquidGlassShader.sksl" />-->
       <None Remove="Assets\Shaders\LiquidGlassShader.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassShader.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassHighlight.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassHighlight.sksl" />
-      <None Remove="Assets\Shaders\LiquidGlassBlur.sksl" />
-      <AvaloniaResource Include="Assets\Shaders\LiquidGlassBlur.sksl" />
-      <None Remove="Assets\Shaders\LiquidGlassVibrancy.sksl" />
-      <AvaloniaResource Include="Assets\Shaders\LiquidGlassVibrancy.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassInteractiveHighlight.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassInteractiveHighlight.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassGamma.sksl" />
@@ -35,16 +26,6 @@
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassProgressiveMask.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassBackdropTransform.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassBackdropTransform.sksl" />
-      <None Remove="Assets\DisplacementMaps\displacementMap.jpeg" />
-      <AvaloniaResource Include="Assets\DisplacementMaps\standard_displacement.jpeg" />
-      <None Remove="Assets\DisplacementMaps\polarDisplacementMap.jpeg" />
-      <AvaloniaResource Include="Assets\DisplacementMaps\polar_displacement.jpeg" />
-      <None Remove="Assets\DisplacementMaps\prominentDisplacementMap.jpeg" />
-      <AvaloniaResource Include="Assets\DisplacementMaps\prominent_displacement.jpeg" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Assets\DisplacementMaps\" />
     </ItemGroup>
 
 </Project>

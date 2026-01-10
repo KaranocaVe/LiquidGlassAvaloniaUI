@@ -18,17 +18,6 @@ More headless-rendered examples:
 | --- |
 | ![Progressive](docs/screenshots/progressive.png) |
 
-
-
-https://github.com/user-attachments/assets/b65269fe-d695-425a-81f7-118e58583341
-
-
-
-*The video above shows the distortion-only effect.*
-## ⚠️ Current Status
-
-This is an experimental implementation. Expect tuning work and performance tradeoffs (runtime shaders + backdrop snapshots).
-
 ## 🚀 Quick Start
 
 1. Clone the repository
@@ -45,15 +34,8 @@ To validate rendering headlessly and optionally emit PNGs:
 
 Recommended (new API):
 
-- `LiquidGlassSurface` - A `Decorator` that draws the liquid-glass pipeline behind its child and clips to `CornerRadius`.
+- `LiquidGlassSurface` - A `ContentControl` that draws the liquid-glass pipeline behind its child and clips to `CornerRadius`.
 - `LiquidGlassInteractiveSurface` - Adds press/drag deformation + interactive highlight.
-
-Legacy wrappers (kept for compatibility; parameter semantics do **not** match the new lens model 1:1):
-
-- `LiquidGlassControl` - Basic liquid glass container
-- `LiquidGlassButton` - Interactive button with liquid glass effects
-- `LiquidGlassCard` - Card component with glass morphing
-- `DraggableLiquidGlassCard` - Draggable card with dynamic effects
 
 ## 🙏 Credits
 

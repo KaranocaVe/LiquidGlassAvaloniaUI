@@ -44,32 +44,6 @@ public class LiquidGlassRenderTests
     }
 
     [AvaloniaFact]
-    public void Blur_shader_compiles()
-    {
-        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassBlur.sksl");
-        using var stream = AssetLoader.Open(assetUri);
-        using var reader = new StreamReader(stream);
-        var shaderCode = reader.ReadToEnd();
-
-        var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
-        Assert.True(effect is not null, $"Failed to compile LiquidGlassBlur.sksl: {errorText}");
-        effect!.Dispose();
-    }
-
-    [AvaloniaFact]
-    public void Vibrancy_shader_compiles()
-    {
-        var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassVibrancy.sksl");
-        using var stream = AssetLoader.Open(assetUri);
-        using var reader = new StreamReader(stream);
-        var shaderCode = reader.ReadToEnd();
-
-        var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
-        Assert.True(effect is not null, $"Failed to compile LiquidGlassVibrancy.sksl: {errorText}");
-        effect!.Dispose();
-    }
-
-    [AvaloniaFact]
     public void Interactive_highlight_shader_compiles()
     {
         var assetUri = new Uri("avares://LiquidGlassAvaloniaUI/Assets/Shaders/LiquidGlassInteractiveHighlight.sksl");

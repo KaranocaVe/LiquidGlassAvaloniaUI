@@ -10,6 +10,12 @@ Requires the Skia renderer (`Avalonia.Skia`).
 
 ![Showcase](docs/screenshots/showcase.png)
 
+
+
+https://github.com/user-attachments/assets/db4542f6-a24c-4b6b-ab51-4dbe688fccc6
+
+
+
 More headless-rendered examples:
 
 | Distortion (refraction + CA) | Magnifier (zoom + offset) |

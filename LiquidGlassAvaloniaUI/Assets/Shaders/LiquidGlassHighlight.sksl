@@ -1,5 +1,5 @@
 // Liquid Glass Highlight Shader
-// Inspired by AndroidLiquidGlass highlight shaders, adapted for SKRuntimeEffect.
+// Adapted for SKRuntimeEffect.
 
 uniform float2 size;
 uniform float4 cornerRadii; // [topLeft, topRight, bottomRight, bottomLeft]

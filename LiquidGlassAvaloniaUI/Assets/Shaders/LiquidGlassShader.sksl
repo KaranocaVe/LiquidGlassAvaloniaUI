@@ -1,6 +1,5 @@
 // Liquid Glass SKSL Shader (Lens refraction + dispersion)
-// Inspired by AndroidLiquidGlass' AGSL lens shaders (rounded-rect refraction + chromatic dispersion),
-// adapted to Avalonia + SkiaSharp (SKRuntimeEffect).
+// Adapted to Avalonia + SkiaSharp (SKRuntimeEffect).
 
 uniform shader content;
 

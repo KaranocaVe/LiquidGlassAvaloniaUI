@@ -9,8 +9,8 @@ using Avalonia.Threading;
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
-    /// An interactive variant of <see cref="LiquidGlassSurface"/> that replicates AndroidLiquidGlass'
-    /// press/drag deformation and interactive highlight overlay.
+    /// An interactive variant of <see cref="LiquidGlassSurface"/> that adds press/drag deformation and
+    /// an interactive highlight overlay.
     /// </summary>
     public class LiquidGlassInteractiveSurface : LiquidGlassSurface
     {

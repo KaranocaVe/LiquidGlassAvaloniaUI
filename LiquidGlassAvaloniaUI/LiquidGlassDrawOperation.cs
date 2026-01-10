@@ -132,8 +132,8 @@ namespace LiquidGlassAvaloniaUI
             var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
             var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
-            // AndroidLiquidGlass pipeline order:
-            //   colorControls (brightness/contrast/saturation) -> blur -> lens -> (optional gamma)
+            // Pipeline order:
+            //   color controls (brightness/contrast/vibrancy) -> blur -> lens -> (optional gamma)
             //
             // In Avalonia we approximate the RenderEffect chain by applying an SKImageFilter pipeline to the
             // captured backdrop snapshot, then sampling the filtered image in the lens runtime shader.
@@ -364,9 +364,8 @@ namespace LiquidGlassAvaloniaUI
 
             if (blurSigmaPx > 0.0005f)
             {
-                // AndroidLiquidGlass uses TileMode.Clamp for its RenderEffect blur stage.
-                // Skia's default tile mode can introduce alpha falloff near image edges (kDecal), which
-                // shows up as darkened borders when the snapshot is clipped by the window bounds.
+                // Use TileMode.Clamp: Skia's default tile mode can introduce alpha falloff near image edges (kDecal),
+                // which shows up as darkened borders when the snapshot is clipped by the window bounds.
                 var cropRect = new SKRect(0, 0, source.Width, source.Height);
                 filter = SKImageFilter.CreateBlur(blurSigmaPx, blurSigmaPx, SKShaderTileMode.Clamp, filter, cropRect);
             }
@@ -403,16 +402,15 @@ namespace LiquidGlassAvaloniaUI
 
         private static float[] CreateColorControlsColorMatrix(float brightness, float contrast, float saturation)
         {
-            // Port of AndroidLiquidGlass' colorControlsColorFilter() (ColorFilter.kt).
-            // Note: Skia's color matrix operates on normalized (0..1) colors, unlike Android's 0..255 translation units.
+            // Color-controls matrix (brightness/contrast/saturation).
+            // Note: Skia's color matrix operates on normalized (0..1) colors.
             var invSat = 1f - saturation;
             var r = 0.213f * invSat;
             var g = 0.715f * invSat;
             var b = 0.072f * invSat;
 
             var c = contrast;
-            // Skia's color matrix filter operates on normalized (0..1) colors, so the translation
-            // terms must also be normalized (Android's ColorMatrix uses 0..255 translation units).
+            // Translation terms must also be normalized.
             var t = (0.5f - c * 0.5f + brightness);
             var s = saturation;
 
@@ -565,8 +563,7 @@ namespace LiquidGlassAvaloniaUI
             var rect = SKRect.Create(0, 0, size.Width, size.Height);
             using var path = CreateRoundRectPath(rect, cornerRadii);
 
-            // Mirror AndroidLiquidGlass' highlight GraphicsLayer "safeSize + translate" approach.
-            // This avoids edge artifacts when the visual is transformed and/or rasterized into an intermediate surface.
+            // Pad the highlight layer to avoid edge artifacts when transformed and/or rasterized into an intermediate surface.
             const float safePad = 1.0f;
 
             canvas.Save();
@@ -584,8 +581,7 @@ namespace LiquidGlassAvaloniaUI
 
         private void DrawSurfaceOverlay(SKCanvas canvas, SKRect rect)
         {
-            // AndroidLiquidGlass draws optional tint/surface fills via onDrawSurface.
-            // If TintColor is specified, it draws it twice: Hue blend + alpha fill.
+            // Optional tint/surface overlays. If TintColor is specified, it draws it twice: Hue blend + alpha fill.
             if (_parameters.TintColor.A > 0)
             {
                 var tint = _parameters.TintColor;

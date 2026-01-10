@@ -1,5 +1,5 @@
 // Liquid Glass Interactive Highlight Shader
-// Matches AndroidLiquidGlass catalog InteractiveHighlight runtime shader.
+// Radial highlight used for interactive press feedback.
 
 uniform float2 size;
 uniform float4 color;   // RGBA (0..1)

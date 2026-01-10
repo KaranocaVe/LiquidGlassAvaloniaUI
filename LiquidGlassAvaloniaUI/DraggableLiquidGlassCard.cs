@@ -8,7 +8,7 @@ namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
     /// Legacy “liquid glass” draggable card kept for compatibility.
-    /// Prefer <see cref="LiquidGlassSurface"/> for the AndroidLiquidGlass-style pipeline.
+    /// Prefer <see cref="LiquidGlassSurface"/> for the full liquid-glass pipeline.
     /// </summary>
     [Obsolete("Use LiquidGlassSurface. This control keeps legacy parameter names and is kept for compatibility.")]
     public class DraggableLiquidGlassCard : Control

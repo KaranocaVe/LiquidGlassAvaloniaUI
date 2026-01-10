@@ -1,6 +1,5 @@
 // Liquid Glass Blur Shader (Gaussian-ish 5x5)
-// AndroidLiquidGlass uses RenderEffect.createBlurEffect (Gaussian blur). This shader approximates
-// that with a 5x5 separable Gaussian kernel (Pascal weights) in a single pass.
+// Approximates a Gaussian blur with a 5x5 separable kernel (Pascal weights) in a single pass.
 
 uniform shader content;
 

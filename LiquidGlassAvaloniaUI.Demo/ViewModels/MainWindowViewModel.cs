@@ -420,7 +420,7 @@ public class MainWindowViewModel : ViewModelBase
         Color.FromRgb(0, 136, 255),   // blue
         Color.FromRgb(255, 0, 122),   // pink
         Color.FromRgb(0, 200, 160),   // teal
-        Color.FromRgb(255, 141, 40),  // amber (Android catalog: 0xFFFF8D28)
+        Color.FromRgb(255, 141, 40),  // amber
     };
 
     private static readonly Color[] SurfacePresets =

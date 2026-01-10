@@ -1182,7 +1182,7 @@ public class LiquidGlassRenderTests
     [InlineData(-0.15, 1.25, 0.85, -0.5, 1.0)]
     [InlineData(0.0, 1.0, 1.5, 0.0, 1.0)]
     [InlineData(0.15, 0.9, 1.4, 0.75, 1.2)]
-    public void Color_controls_and_gamma_match_android_reference_math(
+    public void Color_controls_and_gamma_match_reference_math(
         double brightness,
         double contrast,
         double saturation,
@@ -1235,7 +1235,7 @@ public class LiquidGlassRenderTests
             var y = (int)(window.Height / 2);
             var actual = GetPixel(frame!, x, y);
 
-            var expected = ApplyAndroidColorPipeline(
+            var expected = ApplyReferenceColorPipeline(
                 baseColor,
                 brightness: brightness,
                 contrast: contrast,
@@ -2162,7 +2162,7 @@ public class LiquidGlassRenderTests
         return hash;
     }
 
-    private static (int r, int g, int b) ApplyAndroidColorPipeline(
+    private static (int r, int g, int b) ApplyReferenceColorPipeline(
         Color input,
         double brightness,
         double contrast,
@@ -2174,14 +2174,14 @@ public class LiquidGlassRenderTests
         var g0 = input.G;
         var b0 = input.B;
 
-        var (r1, g1, b1) = ApplyAndroidColorControls(r0, g0, b0, (float)brightness, (float)contrast, (float)saturation);
-        var (r2, g2, b2) = ApplyAndroidExposure(r1, g1, b1, (float)exposureEv);
-        var (r3, g3, b3) = ApplyAndroidGamma(r2, g2, b2, (float)gammaPower);
+        var (r1, g1, b1) = ApplyReferenceColorControls(r0, g0, b0, (float)brightness, (float)contrast, (float)saturation);
+        var (r2, g2, b2) = ApplyReferenceExposure(r1, g1, b1, (float)exposureEv);
+        var (r3, g3, b3) = ApplyReferenceGamma(r2, g2, b2, (float)gammaPower);
 
         return (r3, g3, b3);
     }
 
-    private static (int r, int g, int b) ApplyAndroidColorControls(int r, int g, int b, float brightness, float contrast, float saturation)
+    private static (int r, int g, int b) ApplyReferenceColorControls(int r, int g, int b, float brightness, float contrast, float saturation)
     {
         var rIn = r / 255f;
         var gIn = g / 255f;
@@ -2208,7 +2208,7 @@ public class LiquidGlassRenderTests
         return (ClampToByte(rf * 255f), ClampToByte(gf * 255f), ClampToByte(bf * 255f));
     }
 
-    private static (int r, int g, int b) ApplyAndroidExposure(int r, int g, int b, float exposureEv)
+    private static (int r, int g, int b) ApplyReferenceExposure(int r, int g, int b, float exposureEv)
     {
         if (Math.Abs(exposureEv) < 0.0005f)
             return (r, g, b);
@@ -2217,7 +2217,7 @@ public class LiquidGlassRenderTests
         return (ClampToByte(r * scale), ClampToByte(g * scale), ClampToByte(b * scale));
     }
 
-    private static (int r, int g, int b) ApplyAndroidGamma(int r, int g, int b, float gammaPower)
+    private static (int r, int g, int b) ApplyReferenceGamma(int r, int g, int b, float gammaPower)
     {
         if (Math.Abs(gammaPower - 1.0f) < 0.0005f)
             return (r, g, b);

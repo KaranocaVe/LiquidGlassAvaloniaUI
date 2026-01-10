@@ -17,16 +17,16 @@ namespace LiquidGlassAvaloniaUI
             if (!surface.InteractiveHighlightEnabled)
                 return;
 
-            var progress = surface.GetInteractiveHighlightProgress();
+            double progress = surface.GetInteractiveHighlightProgress();
             if (progress <= 0.001)
                 return;
 
-            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-            var parameters = surface.CreateDrawParameters();
+            Rect bounds = new(0, 0, Bounds.Width, Bounds.Height);
+            LiquidGlassDrawParameters parameters = surface.CreateDrawParameters();
             parameters.InteractiveProgress = progress;
             parameters.InteractivePosition = surface.GetInteractiveHighlightPosition();
 
-            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.InteractiveHighlight));
+            context.Custom(new LiquidGlassDrawOperation(bounds, parameters, null, LiquidGlassDrawPass.InteractiveHighlight));
         }
     }
 
@@ -40,15 +40,14 @@ namespace LiquidGlassAvaloniaUI
             if (TemplatedParent is not LiquidGlassSurface surface)
                 return;
 
-            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-            var parameters = surface.CreateDrawParameters();
+            Rect bounds = new(0, 0, Bounds.Width, Bounds.Height);
+            LiquidGlassDrawParameters parameters = surface.CreateDrawParameters();
 
             if (surface.HighlightEnabled)
-                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, snapshot: null, LiquidGlassDrawPass.Highlight));
+                context.Custom(new LiquidGlassDrawOperation(bounds, parameters, null, LiquidGlassDrawPass.Highlight));
 
             if (surface.InnerShadowEnabled && parameters.InnerShadowOpacity > 0.001 && parameters.InnerShadowColor.A > 0)
                 context.Custom(new LiquidGlassInnerShadowDrawOperation(bounds, parameters));
         }
     }
 }
-

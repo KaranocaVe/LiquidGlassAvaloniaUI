@@ -10,11 +10,7 @@ Requires the Skia renderer (`Avalonia.Skia`).
 
 ![Showcase](docs/screenshots/showcase.png)
 
-
-
-https://github.com/user-attachments/assets/db4542f6-a24c-4b6b-ab51-4dbe688fccc6
-
-
+<https://github.com/user-attachments/assets/db4542f6-a24c-4b6b-ab51-4dbe688fccc6>
 
 More headless-rendered examples:
 
@@ -51,6 +47,7 @@ Recommended (new API):
 
 - Inspired by [liquid-glass-react](https://github.com/rdev/liquid-glass-react/tree/master)
 - Thanks to [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)
+- Assisted by OpenAI Codex (GPT-5.2)
 - Built with [AvaloniaUI](https://avaloniaui.net/)
 - Powered by [SkiaSharp](https://github.com/mono/SkiaSharp)
 

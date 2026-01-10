@@ -41,22 +41,31 @@ namespace LiquidGlassAvaloniaUI
             _backdropSnapshot?.ReleaseLease();
         }
 
-        public bool HitTest(Point p) => false;
+        public bool HitTest(Point p)
+        {
+            return false;
+        }
 
-        public Rect Bounds => _bounds;
+        public Rect Bounds
+        {
+            get => _bounds;
+        }
 
-        public bool Equals(ICustomDrawOperation? other) => false;
+        public bool Equals(ICustomDrawOperation? other)
+        {
+            return false;
+        }
 
         public void Render(ImmediateDrawingContext context)
         {
-            var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+            ISkiaSharpApiLeaseFeature? leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
             if (leaseFeature is null)
                 return;
 
             LoadShaders();
 
-            using var lease = leaseFeature.Lease();
-            var canvas = lease.SkCanvas;
+            using ISkiaSharpApiLease lease = leaseFeature.Lease();
+            SKCanvas canvas = lease.SkCanvas;
 
             switch (_pass)
             {
@@ -90,12 +99,12 @@ namespace LiquidGlassAvaloniaUI
         {
             try
             {
-                var assetUri = new Uri(assetUriString);
-                using var stream = AssetLoader.Open(assetUri);
-                using var reader = new StreamReader(stream);
-                var shaderCode = reader.ReadToEnd();
+                Uri assetUri = new(assetUriString);
+                using Stream stream = AssetLoader.Open(assetUri);
+                using StreamReader reader = new(stream);
+                string shaderCode = reader.ReadToEnd();
 
-                var effect = SKRuntimeEffect.CreateShader(shaderCode, out var errorText);
+                SKRuntimeEffect? effect = SKRuntimeEffect.CreateShader(shaderCode, out string? errorText);
                 if (effect == null)
                     Console.WriteLine($"[LiquidGlass] Failed to create SKRuntimeEffect ({assetUriString}): {errorText}");
 
@@ -122,53 +131,59 @@ namespace LiquidGlassAvaloniaUI
                 return;
             }
 
-            if (!canvas.TotalMatrix.TryInvert(out var currentInvertedTransform))
+            if (!canvas.TotalMatrix.TryInvert(out SKMatrix currentInvertedTransform))
                 return;
 
-            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
             // Pipeline order:
             //   color controls (brightness/contrast/vibrancy) -> blur -> lens -> (optional gamma)
             //
             // In Avalonia we approximate the RenderEffect chain by applying an SKImageFilter pipeline to the
             // captured backdrop snapshot, then sampling the filtered image in the lens runtime shader.
-            var filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters);
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters);
 
-            using var backdropShader = SKShader.CreateImage(
+            using SKShader? backdropShader = SKShader.CreateImage(
                 filtered.Image,
                 SKShaderTileMode.Clamp,
                 SKShaderTileMode.Clamp,
                 WithPixelOrigin(currentInvertedTransform, filtered.OriginInPixels));
 
-            var lensInput = (SKShader)backdropShader;
+            SKShader? lensInput = (SKShader)backdropShader;
 
             SKShader? backdropTransformShader = null;
             try
             {
-                var zoomValue = _parameters.BackdropZoom;
+                double zoomValue = _parameters.BackdropZoom;
                 if (zoomValue <= 0.0005 || double.IsNaN(zoomValue) || double.IsInfinity(zoomValue))
                     zoomValue = 1.0;
 
-                var zoom = (float)Clamp(zoomValue, 0.1, 10.0);
-                var offset = _parameters.BackdropOffset;
-                var needsTransform =
+                float zoom = (float)Clamp(zoomValue, 0.1, 10.0);
+                Vector offset = _parameters.BackdropOffset;
+                bool needsTransform =
                     Math.Abs(zoom - 1.0f) > 0.0005f
                     || Math.Abs(offset.X) > 0.0005
                     || Math.Abs(offset.Y) > 0.0005;
 
                 if (needsTransform && s_backdropTransformEffect is not null)
                 {
-                    using var uniforms = new SKRuntimeEffectUniforms(s_backdropTransformEffect);
-                    uniforms["size"] = new[] { size.Width, size.Height };
+                    using SKRuntimeEffectUniforms uniforms = new(s_backdropTransformEffect);
+                    uniforms["size"] = new[]
+                    {
+                        size.Width, size.Height
+                    };
                     uniforms["zoom"] = zoom;
-                    uniforms["offset"] = new[] { (float)offset.X, (float)offset.Y };
+                    uniforms["offset"] = new[]
+                    {
+                        (float)offset.X, (float)offset.Y
+                    };
 
-                    using var children = new SKRuntimeEffectChildren(s_backdropTransformEffect);
+                    using SKRuntimeEffectChildren children = new(s_backdropTransformEffect);
                     children["content"] = lensInput;
 
                     backdropTransformShader = s_backdropTransformEffect.ToShader(uniforms, children);
@@ -176,15 +191,18 @@ namespace LiquidGlassAvaloniaUI
                         lensInput = backdropTransformShader;
                 }
 
-                var refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
-                var refractionAmount = (float)_parameters.RefractionAmount;
-                var applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
+                float refractionHeight = (float)Clamp(_parameters.RefractionHeight, 0.0, Math.Min(size.Width, size.Height) * 0.5);
+                float refractionAmount = (float)_parameters.RefractionAmount;
+                bool applyLens = refractionHeight > 0.001f && Math.Abs(refractionAmount) > 0.001f;
 
                 SKShader? lensShader = null;
                 if (applyLens)
                 {
-                    using var lensUniforms = new SKRuntimeEffectUniforms(s_lensEffect);
-                    lensUniforms["size"] = new[] { size.Width, size.Height };
+                    using SKRuntimeEffectUniforms lensUniforms = new(s_lensEffect);
+                    lensUniforms["size"] = new[]
+                    {
+                        size.Width, size.Height
+                    };
                     lensUniforms["cornerRadii"] = cornerRadii;
                     lensUniforms["refractionHeight"] = refractionHeight;
                     // The lens shader expects a negative refraction amount.
@@ -192,13 +210,13 @@ namespace LiquidGlassAvaloniaUI
                     lensUniforms["depthEffect"] = _parameters.DepthEffect ? 1.0f : 0.0f;
                     lensUniforms["chromaticAberration"] = _parameters.ChromaticAberration ? 1.0f : 0.0f;
 
-                    using var lensChildren = new SKRuntimeEffectChildren(s_lensEffect);
+                    using SKRuntimeEffectChildren lensChildren = new(s_lensEffect);
                     lensChildren["content"] = lensInput;
 
                     lensShader = s_lensEffect.ToShader(lensUniforms, lensChildren);
                 }
 
-                var baseShader = lensShader ?? lensInput;
+                SKShader? baseShader = lensShader ?? lensInput;
 
                 SKShader? progressiveMaskShader = null;
                 try
@@ -206,26 +224,26 @@ namespace LiquidGlassAvaloniaUI
                     if (_parameters.ProgressiveBlurEnabled
                         && s_progressiveMaskEffect is not null)
                     {
-                        using var uniforms = new SKRuntimeEffectUniforms(s_progressiveMaskEffect);
-                        uniforms["size"] = new[] { size.Width, size.Height };
+                        using SKRuntimeEffectUniforms uniforms = new(s_progressiveMaskEffect);
+                        uniforms["size"] = new[]
+                        {
+                            size.Width, size.Height
+                        };
                         uniforms["start"] = (float)Clamp(_parameters.ProgressiveBlurStart, 0.0, 1.0);
                         uniforms["end"] = (float)Clamp(_parameters.ProgressiveBlurEnd, 0.0, 1.0);
 
-                        var tint = _parameters.ProgressiveTintColor;
+                        Color tint = _parameters.ProgressiveTintColor;
                         uniforms["tint"] = new[]
                         {
-                            tint.R / 255f,
-                            tint.G / 255f,
-                            tint.B / 255f,
-                            tint.A / 255f
+                            tint.R / 255f, tint.G / 255f, tint.B / 255f, tint.A / 255f
                         };
 
-                        var tintIntensity = tint.A > 0
+                        float tintIntensity = tint.A > 0
                             ? (float)Clamp(_parameters.ProgressiveTintIntensity, 0.0, 1.0)
                             : 0.0f;
                         uniforms["tintIntensity"] = tintIntensity;
 
-                        using var children = new SKRuntimeEffectChildren(s_progressiveMaskEffect);
+                        using SKRuntimeEffectChildren children = new(s_progressiveMaskEffect);
                         children["content"] = baseShader;
 
                         progressiveMaskShader = s_progressiveMaskEffect.ToShader(uniforms, children);
@@ -236,24 +254,24 @@ namespace LiquidGlassAvaloniaUI
                     SKShader? gammaShader = null;
                     try
                     {
-                        var gammaPower = (float)Clamp(_parameters.GammaPower, 0.0, 10.0);
+                        float gammaPower = (float)Clamp(_parameters.GammaPower, 0.0, 10.0);
                         if (s_gammaEffect is not null && Math.Abs(gammaPower - 1.0f) > 0.0005f)
                         {
-                            using var uniforms = new SKRuntimeEffectUniforms(s_gammaEffect);
+                            using SKRuntimeEffectUniforms uniforms = new(s_gammaEffect);
                             uniforms["power"] = gammaPower;
-                            using var children = new SKRuntimeEffectChildren(s_gammaEffect);
+                            using SKRuntimeEffectChildren children = new(s_gammaEffect);
                             children["content"] = baseShader;
                             gammaShader = s_gammaEffect.ToShader(uniforms, children);
                         }
 
-                        using var paint = new SKPaint
+                        using SKPaint paint = new()
                         {
                             Shader = gammaShader ?? baseShader,
                             IsAntialias = true
                         };
 
-                        var rect = SKRect.Create(0, 0, size.Width, size.Height);
-                        using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+                        SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
+                        using SKPath clipPath = CreateRoundRectPath(rect, cornerRadii);
 
                         canvas.Save();
                         canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
@@ -285,15 +303,15 @@ namespace LiquidGlassAvaloniaUI
             LiquidGlassBackdropSnapshot snapshot,
             LiquidGlassDrawParameters parameters)
         {
-            var brightness = (float)Clamp(parameters.Brightness, -1.0, 1.0);
-            var contrast = (float)Clamp(parameters.Contrast, 0.0, 4.0);
-            var saturation = (float)Clamp(parameters.Vibrancy, 0.0, 4.0);
-            var exposureEv = (float)Clamp(parameters.ExposureEv, -8.0, 8.0);
-            var opacity = (float)Clamp(parameters.BackdropOpacity, 0.0, 1.0);
+            float brightness = (float)Clamp(parameters.Brightness, -1.0, 1.0);
+            float contrast = (float)Clamp(parameters.Contrast, 0.0, 4.0);
+            float saturation = (float)Clamp(parameters.Vibrancy, 0.0, 4.0);
+            float exposureEv = (float)Clamp(parameters.ExposureEv, -8.0, 8.0);
+            float opacity = (float)Clamp(parameters.BackdropOpacity, 0.0, 1.0);
 
-            var blurSigmaPx = (float)(Clamp(parameters.BlurRadius, 0.0, 256.0) * snapshot.Scaling);
+            float blurSigmaPx = (float)(Clamp(parameters.BlurRadius, 0.0, 256.0) * snapshot.Scaling);
 
-            var isIdentity =
+            bool isIdentity =
                 Math.Abs(brightness) < 0.0005f
                 && Math.Abs(contrast - 1.0f) < 0.0005f
                 && Math.Abs(saturation - 1.0f) < 0.0005f
@@ -306,19 +324,19 @@ namespace LiquidGlassAvaloniaUI
 
             // Quantize to keep the cache size stable during slider drags.
             const float q = 1000.0f;
-            var key = new LiquidGlassBackdropSnapshot.FilteredKey(
-                brightnessQ: (int)Math.Round(brightness * q),
-                contrastQ: (int)Math.Round(contrast * q),
-                saturationQ: (int)Math.Round(saturation * q),
-                exposureEvQ: (int)Math.Round(exposureEv * q),
-                opacityQ: (int)Math.Round(opacity * q),
-                blurSigmaPxQ: (int)Math.Round(blurSigmaPx * q));
+            LiquidGlassBackdropSnapshot.FilteredKey key = new(
+                (int)Math.Round(brightness * q),
+                (int)Math.Round(contrast * q),
+                (int)Math.Round(saturation * q),
+                (int)Math.Round(exposureEv * q),
+                (int)Math.Round(opacity * q),
+                (int)Math.Round(blurSigmaPx * q));
 
-            if (snapshot.TryGetFiltered(key, out var cached))
+            if (snapshot.TryGetFiltered(key, out LiquidGlassBackdropSnapshot.FilteredResult cached))
                 return cached;
 
-            var filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx)
-                           ?? new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx)
+                                                                  ?? new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
 
             // Never cache the unfiltered snapshot image (it is owned/disposed separately).
             if (!ReferenceEquals(filtered.Image, snapshot.Image))
@@ -336,30 +354,30 @@ namespace LiquidGlassAvaloniaUI
             float opacity,
             float blurSigmaPx)
         {
-            var source = snapshot.Image;
+            SKImage source = snapshot.Image;
 
             SKImageFilter? filter = null;
 
-            var needsColorControls =
+            bool needsColorControls =
                 Math.Abs(brightness) > 0.0005f
                 || Math.Abs(contrast - 1.0f) > 0.0005f
                 || Math.Abs(saturation - 1.0f) > 0.0005f;
 
             if (needsColorControls)
             {
-                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateColorControlsColorMatrix(brightness, contrast, saturation));
+                using SKColorFilter? colorFilter = SKColorFilter.CreateColorMatrix(CreateColorControlsColorMatrix(brightness, contrast, saturation));
                 filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
             }
 
             if (Math.Abs(exposureEv) > 0.0005f)
             {
-                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateExposureColorMatrix(exposureEv));
+                using SKColorFilter? colorFilter = SKColorFilter.CreateColorMatrix(CreateExposureColorMatrix(exposureEv));
                 filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
             }
 
             if (Math.Abs(opacity - 1.0f) > 0.0005f)
             {
-                using var colorFilter = SKColorFilter.CreateColorMatrix(CreateOpacityColorMatrix(opacity));
+                using SKColorFilter? colorFilter = SKColorFilter.CreateColorMatrix(CreateOpacityColorMatrix(opacity));
                 filter = SKImageFilter.CreateColorFilter(colorFilter, filter);
             }
 
@@ -367,7 +385,7 @@ namespace LiquidGlassAvaloniaUI
             {
                 // Use TileMode.Clamp: Skia's default tile mode can introduce alpha falloff near image edges (kDecal),
                 // which shows up as darkened borders when the snapshot is clipped by the window bounds.
-                var cropRect = new SKRect(0, 0, source.Width, source.Height);
+                SKRect cropRect = new(0, 0, source.Width, source.Height);
                 filter = SKImageFilter.CreateBlur(blurSigmaPx, blurSigmaPx, SKShaderTileMode.Clamp, filter, cropRect);
             }
 
@@ -379,15 +397,15 @@ namespace LiquidGlassAvaloniaUI
                 // ApplyImageFilter() can return a varying offset/subset for blur radii, which can cause the
                 // sampled backdrop to appear to "drift" while dragging the blur slider. Instead, render the
                 // filtered snapshot into an explicit same-size surface at (0,0) so the origin remains stable.
-                var info = new SKImageInfo(source.Width, source.Height, source.ColorType, source.AlphaType, source.ColorSpace);
-                using var surface = SKSurface.Create(info);
+                SKImageInfo info = new(source.Width, source.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+                using SKSurface? surface = SKSurface.Create(info);
                 if (surface is null)
                     return null;
 
-                var canvas = surface.Canvas;
+                SKCanvas? canvas = surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
 
-                using var paint = new SKPaint
+                using SKPaint paint = new()
                 {
                     ImageFilter = filter,
                     BlendMode = SKBlendMode.Src
@@ -396,7 +414,7 @@ namespace LiquidGlassAvaloniaUI
                 canvas.DrawImage(source, 0, 0, paint);
                 canvas.Flush();
 
-                var filteredImage = surface.Snapshot();
+                SKImage? filteredImage = surface.Snapshot();
                 return new LiquidGlassBackdropSnapshot.FilteredResult(filteredImage, snapshot.OriginInPixels);
             }
         }
@@ -405,39 +423,33 @@ namespace LiquidGlassAvaloniaUI
         {
             // Color-controls matrix (brightness/contrast/saturation).
             // Note: Skia's color matrix operates on normalized (0..1) colors.
-            var invSat = 1f - saturation;
-            var r = 0.213f * invSat;
-            var g = 0.715f * invSat;
-            var b = 0.072f * invSat;
+            float invSat = 1f - saturation;
+            float r = 0.213f * invSat;
+            float g = 0.715f * invSat;
+            float b = 0.072f * invSat;
 
-            var c = contrast;
+            float c = contrast;
             // Translation terms must also be normalized.
-            var t = (0.5f - c * 0.5f + brightness);
-            var s = saturation;
+            float t = 0.5f - c * 0.5f + brightness;
+            float s = saturation;
 
-            var cr = c * r;
-            var cg = c * g;
-            var cb = c * b;
-            var cs = c * s;
+            float cr = c * r;
+            float cg = c * g;
+            float cb = c * b;
+            float cs = c * s;
 
             return new[]
             {
-                cr + cs, cg, cb, 0f, t,
-                cr, cg + cs, cb, 0f, t,
-                cr, cg, cb + cs, 0f, t,
-                0f, 0f, 0f, 1f, 0f
+                cr + cs, cg, cb, 0f, t, cr, cg + cs, cb, 0f, t, cr, cg, cb + cs, 0f, t, 0f, 0f, 0f, 1f, 0f
             };
         }
 
         private static float[] CreateExposureColorMatrix(float ev)
         {
-            var scale = (float)Math.Pow(2.0, ev / 2.2);
+            float scale = (float)Math.Pow(2.0, ev / 2.2);
             return new[]
             {
-                scale, 0f, 0f, 0f, 0f,
-                0f, scale, 0f, 0f, 0f,
-                0f, 0f, scale, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f
+                scale, 0f, 0f, 0f, 0f, 0f, scale, 0f, 0f, 0f, 0f, 0f, scale, 0f, 0f, 0f, 0f, 0f, 1f, 0f
             };
         }
 
@@ -445,10 +457,7 @@ namespace LiquidGlassAvaloniaUI
         {
             return new[]
             {
-                1f, 0f, 0f, 0f, 0f,
-                0f, 1f, 0f, 0f, 0f,
-                0f, 0f, 1f, 0f, 0f,
-                0f, 0f, 0f, alpha, 0f
+                1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 0f, alpha, 0f
             };
         }
 
@@ -457,49 +466,54 @@ namespace LiquidGlassAvaloniaUI
             if (s_interactiveHighlightEffect is null)
                 return;
 
-            var progress = (float)Clamp(_parameters.InteractiveProgress, 0.0, 1.0);
+            float progress = (float)Clamp(_parameters.InteractiveProgress, 0.0, 1.0);
             if (progress <= 0.001f)
                 return;
 
-            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
-            using var clipPath = CreateRoundRectPath(rect, cornerRadii);
+            SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
+            using SKPath clipPath = CreateRoundRectPath(rect, cornerRadii);
 
             canvas.Save();
             canvas.ClipPath(clipPath, SKClipOperation.Intersect, true);
 
-            using (var basePaint = new SKPaint
-            {
-                Color = new SKColor(255, 255, 255, (byte)(Clamp(0.08f * progress * 255f, 0f, 255f))),
-                BlendMode = SKBlendMode.Plus,
-                IsAntialias = true
-            })
+            using (SKPaint basePaint = new()
+                {
+                    Color = new SKColor(255, 255, 255, (byte)Clamp(0.08f * progress * 255f, 0f, 255f)),
+                    BlendMode = SKBlendMode.Plus,
+                    IsAntialias = true
+                })
             {
                 canvas.DrawRect(rect, basePaint);
             }
 
-            using var uniforms = new SKRuntimeEffectUniforms(s_interactiveHighlightEffect);
-            uniforms["size"] = new[] { size.Width, size.Height };
-            uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, (float)Clamp(0.15 * progress, 0.0, 1.0) };
+            using SKRuntimeEffectUniforms uniforms = new(s_interactiveHighlightEffect);
+            uniforms["size"] = new[]
+            {
+                size.Width, size.Height
+            };
+            uniforms["color"] = new[]
+            {
+                1.0f, 1.0f, 1.0f, (float)Clamp(0.15 * progress, 0.0, 1.0)
+            };
             uniforms["radius"] = Math.Min(size.Width, size.Height) * 1.5f;
             uniforms["position"] = new[]
             {
-                (float)Clamp(_parameters.InteractivePosition.X, 0.0, size.Width),
-                (float)Clamp(_parameters.InteractivePosition.Y, 0.0, size.Height)
+                (float)Clamp(_parameters.InteractivePosition.X, 0.0, size.Width), (float)Clamp(_parameters.InteractivePosition.Y, 0.0, size.Height)
             };
 
-            using var children = new SKRuntimeEffectChildren(s_interactiveHighlightEffect);
-            using var shader = s_interactiveHighlightEffect.ToShader(uniforms, children);
+            using SKRuntimeEffectChildren children = new(s_interactiveHighlightEffect);
+            using SKShader? shader = s_interactiveHighlightEffect.ToShader(uniforms, children);
 
             if (shader is not null)
             {
-                using var paint = new SKPaint
+                using SKPaint paint = new()
                 {
                     Shader = shader,
                     BlendMode = SKBlendMode.Plus,
@@ -519,37 +533,43 @@ namespace LiquidGlassAvaloniaUI
             if (_parameters.HighlightOpacity <= 0.001 || _parameters.HighlightWidth <= 0.001)
                 return;
 
-            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
 
-            using var uniforms = new SKRuntimeEffectUniforms(s_highlightEffect);
-            uniforms["size"] = new[] { size.Width, size.Height };
+            using SKRuntimeEffectUniforms uniforms = new(s_highlightEffect);
+            uniforms["size"] = new[]
+            {
+                size.Width, size.Height
+            };
             uniforms["cornerRadii"] = cornerRadii;
 
-            var alpha = (float)Clamp(_parameters.HighlightOpacity, 0.0, 1.0);
-            uniforms["color"] = new[] { 1.0f, 1.0f, 1.0f, alpha };
+            float alpha = (float)Clamp(_parameters.HighlightOpacity, 0.0, 1.0);
+            uniforms["color"] = new[]
+            {
+                1.0f, 1.0f, 1.0f, alpha
+            };
 
-            var angleRad = (float)(_parameters.HighlightAngleDegrees * (Math.PI / 180.0));
+            float angleRad = (float)(_parameters.HighlightAngleDegrees * (Math.PI / 180.0));
             uniforms["angle"] = angleRad;
             uniforms["falloff"] = (float)Clamp(_parameters.HighlightFalloff, 0.0, 8.0);
 
-            using var children = new SKRuntimeEffectChildren(s_highlightEffect);
-            using var shader = s_highlightEffect.ToShader(uniforms, children);
+            using SKRuntimeEffectChildren children = new(s_highlightEffect);
+            using SKShader? shader = s_highlightEffect.ToShader(uniforms, children);
             if (shader is null)
                 return;
 
-            var blurRadius = (float)Clamp(_parameters.HighlightBlurRadius, 0.0, 20.0);
-            using var maskFilter = blurRadius > 0.001f
+            float blurRadius = (float)Clamp(_parameters.HighlightBlurRadius, 0.0, 20.0);
+            using SKMaskFilter? maskFilter = blurRadius > 0.001f
                 ? SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blurRadius)
                 : null;
 
-            var strokeWidth = (float)(Math.Ceiling(Clamp(_parameters.HighlightWidth, 0.0, 100.0)) * 2.0);
+            float strokeWidth = (float)(Math.Ceiling(Clamp(_parameters.HighlightWidth, 0.0, 100.0)) * 2.0);
 
-            using var paint = new SKPaint
+            using SKPaint paint = new()
             {
                 Shader = shader,
                 IsAntialias = true,
@@ -561,15 +581,15 @@ namespace LiquidGlassAvaloniaUI
                 MaskFilter = maskFilter
             };
 
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
-            using var path = CreateRoundRectPath(rect, cornerRadii);
+            SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
+            using SKPath path = CreateRoundRectPath(rect, cornerRadii);
 
             // Pad the highlight layer to avoid edge artifacts when transformed and/or rasterized into an intermediate surface.
             const float safePad = 1.0f;
 
             canvas.Save();
             canvas.Translate(-safePad, -safePad);
-            var layerBounds = SKRect.Create(0, 0, size.Width + safePad * 2.0f, size.Height + safePad * 2.0f);
+            SKRect layerBounds = SKRect.Create(0, 0, size.Width + safePad * 2.0f, size.Height + safePad * 2.0f);
             canvas.SaveLayer(layerBounds, null);
 
             canvas.Translate(safePad, safePad);
@@ -585,8 +605,8 @@ namespace LiquidGlassAvaloniaUI
             // Optional tint/surface overlays. If TintColor is specified, it draws it twice: Hue blend + alpha fill.
             if (_parameters.TintColor.A > 0)
             {
-                var tint = _parameters.TintColor;
-                using var huePaint = new SKPaint
+                Color tint = _parameters.TintColor;
+                using SKPaint huePaint = new()
                 {
                     Color = new SKColor(tint.R, tint.G, tint.B, 255),
                     IsAntialias = true,
@@ -594,7 +614,7 @@ namespace LiquidGlassAvaloniaUI
                 };
                 canvas.DrawRect(rect, huePaint);
 
-                using var fillPaint = new SKPaint
+                using SKPaint fillPaint = new()
                 {
                     Color = new SKColor(tint.R, tint.G, tint.B, (byte)Clamp(tint.A * 0.75, 0.0, 255.0)),
                     IsAntialias = true,
@@ -605,8 +625,8 @@ namespace LiquidGlassAvaloniaUI
 
             if (_parameters.SurfaceColor.A > 0)
             {
-                var surface = _parameters.SurfaceColor;
-                using var paint = new SKPaint
+                Color surface = _parameters.SurfaceColor;
+                using SKPaint paint = new()
                 {
                     Color = new SKColor(surface.R, surface.G, surface.B, surface.A),
                     IsAntialias = true,
@@ -618,32 +638,32 @@ namespace LiquidGlassAvaloniaUI
 
         private static float[] GetCornerRadii(CornerRadius cornerRadius, float maxRadius)
         {
-            var tl = (float)Clamp(cornerRadius.TopLeft, 0.0, maxRadius);
-            var tr = (float)Clamp(cornerRadius.TopRight, 0.0, maxRadius);
-            var br = (float)Clamp(cornerRadius.BottomRight, 0.0, maxRadius);
-            var bl = (float)Clamp(cornerRadius.BottomLeft, 0.0, maxRadius);
-            return new[] { tl, tr, br, bl };
+            float tl = (float)Clamp(cornerRadius.TopLeft, 0.0, maxRadius);
+            float tr = (float)Clamp(cornerRadius.TopRight, 0.0, maxRadius);
+            float br = (float)Clamp(cornerRadius.BottomRight, 0.0, maxRadius);
+            float bl = (float)Clamp(cornerRadius.BottomLeft, 0.0, maxRadius);
+            return new[]
+            {
+                tl, tr, br, bl
+            };
         }
 
         private static SKPath CreateRoundRectPath(SKRect rect, float[] cornerRadii)
         {
-            using var rr = new SKRoundRect();
+            using SKRoundRect rr = new();
             rr.SetRectRadii(rect, new[]
             {
-                new SKPoint(cornerRadii[0], cornerRadii[0]),
-                new SKPoint(cornerRadii[1], cornerRadii[1]),
-                new SKPoint(cornerRadii[2], cornerRadii[2]),
-                new SKPoint(cornerRadii[3], cornerRadii[3]),
+                new SKPoint(cornerRadii[0], cornerRadii[0]), new SKPoint(cornerRadii[1], cornerRadii[1]), new SKPoint(cornerRadii[2], cornerRadii[2]), new SKPoint(cornerRadii[3], cornerRadii[3])
             });
 
-            var path = new SKPath();
+            SKPath path = new();
             path.AddRoundRect(rr, SKPathDirection.Clockwise);
             return path;
         }
 
         private void DrawErrorHint(SKCanvas canvas)
         {
-            using var errorPaint = new SKPaint
+            using SKPaint errorPaint = new()
             {
                 Color = new SKColor(255, 0, 0, 120),
                 Style = SKPaintStyle.Fill
@@ -654,14 +674,14 @@ namespace LiquidGlassAvaloniaUI
 
         private void DrawBackdropNotReady(SKCanvas canvas)
         {
-            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
+            SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
-            using var path = CreateRoundRectPath(rect, cornerRadii);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            using SKPath path = CreateRoundRectPath(rect, cornerRadii);
 
-            using var paint = new SKPaint
+            using SKPaint paint = new()
             {
                 Color = new SKColor(255, 255, 255, 32),
                 IsAntialias = true
@@ -686,8 +706,8 @@ namespace LiquidGlassAvaloniaUI
             //
             // We first cancel the current canvas transform (so shader coordinates become device pixels),
             // then shift into the clipped snapshot's coordinate system.
-            var ox = (float)originInPixels.X;
-            var oy = (float)originInPixels.Y;
+            float ox = (float)originInPixels.X;
+            float oy = (float)originInPixels.Y;
             invertedTransform.TransX = invertedTransform.TransX + invertedTransform.ScaleX * ox + invertedTransform.SkewX * oy;
             invertedTransform.TransY = invertedTransform.TransY + invertedTransform.SkewY * ox + invertedTransform.ScaleY * oy;
             return invertedTransform;

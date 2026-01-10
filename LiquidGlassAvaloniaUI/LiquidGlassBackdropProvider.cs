@@ -44,33 +44,36 @@ namespace LiquidGlassAvaloniaUI
         private static int s_captureDepth;
         private static PropertyInfo? s_dirtyRectProperty;
 
-        public static bool IsCapturing => s_captureDepth > 0;
+        public static bool IsCapturing
+        {
+            get => s_captureDepth > 0;
+        }
 
         public static LiquidGlassBackdropSnapshot? TryGetSnapshot(Control control)
         {
-            var topLevel = TopLevel.GetTopLevel(control);
+            TopLevel? topLevel = TopLevel.GetTopLevel(control);
             if (topLevel is null)
                 return null;
 
-            return s_states.TryGetValue(topLevel, out var state)
+            return s_states.TryGetValue(topLevel, out BackdropState? state)
                 ? System.Threading.Volatile.Read(ref state.Snapshot)
                 : null;
         }
 
         public static void EnsureSnapshot(Control control)
         {
-            var topLevel = TopLevel.GetTopLevel(control);
+            TopLevel? topLevel = TopLevel.GetTopLevel(control);
             if (topLevel is null)
                 return;
 
-            var state = s_states.GetOrCreateValue(topLevel);
+            BackdropState? state = s_states.GetOrCreateValue(topLevel);
             TrackSubscriber(state, control);
             CleanupSubscribers(state);
             EnsureRendererSubscription(topLevel, state);
 
-            var scaling = topLevel.RenderScaling;
+            double scaling = topLevel.RenderScaling;
 
-            var shouldCapture =
+            bool shouldCapture =
                 state.Snapshot is null
                 || !state.SnapshotScaling.Equals(scaling);
 
@@ -80,7 +83,7 @@ namespace LiquidGlassAvaloniaUI
 
         private static void CleanupSubscribers(BackdropState state)
         {
-            for (var i = state.Subscribers.Count - 1; i >= 0; i--)
+            for (int i = state.Subscribers.Count - 1; i >= 0; i--)
             {
                 if (!state.Subscribers[i].TryGetTarget(out _))
                     state.Subscribers.RemoveAt(i);
@@ -117,38 +120,38 @@ namespace LiquidGlassAvaloniaUI
                 return;
             }
 
-            var scaling = topLevel.RenderScaling;
-            var clip = CalculateBackdropClip(topLevel, state, scaling);
+            double scaling = topLevel.RenderScaling;
+            BackdropClip clip = CalculateBackdropClip(topLevel, state, scaling);
             if (clip.DipRect.Width <= 0 || clip.DipRect.Height <= 0)
                 return;
 
-            var pixelSize = clip.PixelRect.Size;
+            PixelSize pixelSize = clip.PixelRect.Size;
             state.LastClipRect = clip.DipRect;
             state.HasLastClipRect = true;
 
             s_captureDepth++;
             try
             {
-                var dpi = new Vector(96 * scaling, 96 * scaling);
+                Vector dpi = new(96 * scaling, 96 * scaling);
                 if (state.ScratchBitmap is null || state.ScratchBitmap.PixelSize != pixelSize || !state.SnapshotScaling.Equals(scaling))
                 {
                     state.ScratchBitmap?.Dispose();
                     state.ScratchBitmap = new RenderTargetBitmap(pixelSize, dpi);
                 }
 
-                var nowTicks = DateTime.UtcNow.Ticks;
-                var excludedRoots = GetExcludedRoots(topLevel, state);
+                long nowTicks = DateTime.UtcNow.Ticks;
+                HashSet<Visual> excludedRoots = GetExcludedRoots(topLevel, state);
                 RenderVisualWithClip(state.ScratchBitmap, topLevel, clip.DipRect, excludedRoots);
-                var originInPixels = clip.PixelRect.Position;
+                PixelPoint originInPixels = clip.PixelRect.Position;
 
-                var currentSnapshot = System.Threading.Volatile.Read(ref state.Snapshot);
-                var isSameConfig =
+                LiquidGlassBackdropSnapshot? currentSnapshot = System.Threading.Volatile.Read(ref state.Snapshot);
+                bool isSameConfig =
                     currentSnapshot is not null
                     && state.SnapshotScaling.Equals(scaling)
                     && state.SnapshotPixelSize == pixelSize
                     && state.SnapshotOriginInPixels == originInPixels;
 
-                var (snapshotImage, hash) = CreateSkImageWithHash(state.ScratchBitmap, isSameConfig, state.SnapshotHash);
+                (SKImage? snapshotImage, ulong hash) = CreateSkImageWithHash(state.ScratchBitmap, isSameConfig, state.SnapshotHash);
 
                 if (isSameConfig && state.SnapshotHash == hash)
                 {
@@ -159,7 +162,7 @@ namespace LiquidGlassAvaloniaUI
                 if (snapshotImage is null)
                     return;
 
-                var snapshot = new LiquidGlassBackdropSnapshot(snapshotImage, originInPixels, pixelSize, scaling);
+                LiquidGlassBackdropSnapshot snapshot = new(snapshotImage, originInPixels, pixelSize, scaling);
                 state.SnapshotHash = hash;
                 state.SnapshotPixelSize = pixelSize;
                 state.SnapshotOriginInPixels = originInPixels;
@@ -187,11 +190,11 @@ namespace LiquidGlassAvaloniaUI
             if (topLevel is not IRenderRoot renderRoot)
                 return;
 
-            var renderer = renderRoot.Renderer;
+            IRenderer? renderer = renderRoot.Renderer;
             if (renderer is null)
                 return;
 
-            var evt = renderer.GetType().GetEvent("SceneInvalidated", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            EventInfo? evt = renderer.GetType().GetEvent("SceneInvalidated", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (evt is null)
                 return;
 
@@ -203,7 +206,7 @@ namespace LiquidGlassAvaloniaUI
                 if (!topLevel.IsVisible)
                     return;
 
-                var hasDirtyRect = TryGetDirtyRect(args, out var dirtyRect);
+                bool hasDirtyRect = TryGetDirtyRect(args, out Rect dirtyRect);
                 Dispatcher.UIThread.Post(() =>
                 {
                     if (IsCapturing)
@@ -212,7 +215,7 @@ namespace LiquidGlassAvaloniaUI
                     if (!topLevel.IsVisible)
                         return;
 
-                    if (!s_states.TryGetValue(topLevel, out var current) || !ReferenceEquals(current, state))
+                    if (!s_states.TryGetValue(topLevel, out BackdropState? current) || !ReferenceEquals(current, state))
                         return;
 
                     CleanupSubscribers(state);
@@ -229,15 +232,15 @@ namespace LiquidGlassAvaloniaUI
                     // If the required clip (inflated by blur/refraction) grows beyond the last capture,
                     // don't wait for the cadence timer — otherwise interactive slider drags can render
                     // with an undersized snapshot and appear to "shift" as the blur kernel clamps.
-                    var scaling = topLevel.RenderScaling;
-                    var desiredClip = CalculateBackdropClip(topLevel, state, scaling);
-                    var needsClipGrowthCapture =
+                    double scaling = topLevel.RenderScaling;
+                    BackdropClip desiredClip = CalculateBackdropClip(topLevel, state, scaling);
+                    bool needsClipGrowthCapture =
                         desiredClip.DipRect.Width > 0
                         && desiredClip.DipRect.Height > 0
                         && (!state.HasLastClipRect || !RectContains(state.LastClipRect, desiredClip.DipRect));
 
-                    var nowTicks = DateTime.UtcNow.Ticks;
-                    if (!needsClipGrowthCapture && (nowTicks - state.LastCaptureTicksUtc) < s_minCaptureIntervalTicks)
+                    long nowTicks = DateTime.UtcNow.Ticks;
+                    if (!needsClipGrowthCapture && nowTicks - state.LastCaptureTicksUtc < s_minCaptureIntervalTicks)
                         return;
 
                     if (!needsClipGrowthCapture && hasDirtyRect && state.HasLastClipRect && !dirtyRect.Intersects(state.LastClipRect))
@@ -280,12 +283,12 @@ namespace LiquidGlassAvaloniaUI
         private static BackdropClip CalculateBackdropClip(TopLevel topLevel, BackdropState state, double scaling)
         {
             Rect? union = null;
-            var root = topLevel;
-            var clientRect = new Rect(topLevel.ClientSize);
+            TopLevel root = topLevel;
+            Rect clientRect = new(topLevel.ClientSize);
 
-            for (var i = state.Subscribers.Count - 1; i >= 0; i--)
+            for (int i = state.Subscribers.Count - 1; i >= 0; i--)
             {
-                if (!state.Subscribers[i].TryGetTarget(out var control))
+                if (!state.Subscribers[i].TryGetTarget(out Control? control))
                 {
                     state.Subscribers.RemoveAt(i);
                     continue;
@@ -297,19 +300,19 @@ namespace LiquidGlassAvaloniaUI
                 if (!ReferenceEquals(control.GetVisualRoot(), root))
                     continue;
 
-                var transformed = control.GetTransformedBounds();
+                TransformedBounds? transformed = control.GetTransformedBounds();
                 if (transformed is null)
                     continue;
 
-                var globalBounds = transformed.Value.Bounds.TransformToAABB(transformed.Value.Transform);
+                Rect globalBounds = transformed.Value.Bounds.TransformToAABB(transformed.Value.Transform);
 
                 // Inflate by an approximate sampling margin (blur + refraction). We scale the inflation
                 // by the visual's render transform to keep it conservative for interactive transforms.
-                var localInflate = GetBackdropInflate(control);
-                var scaleX = Math.Sqrt(transformed.Value.Transform.M11 * transformed.Value.Transform.M11 + transformed.Value.Transform.M21 * transformed.Value.Transform.M21);
-                var scaleY = Math.Sqrt(transformed.Value.Transform.M12 * transformed.Value.Transform.M12 + transformed.Value.Transform.M22 * transformed.Value.Transform.M22);
-                var inflateX = localInflate * Math.Max(1.0, scaleX);
-                var inflateY = localInflate * Math.Max(1.0, scaleY);
+                double localInflate = GetBackdropInflate(control);
+                double scaleX = Math.Sqrt(transformed.Value.Transform.M11 * transformed.Value.Transform.M11 + transformed.Value.Transform.M21 * transformed.Value.Transform.M21);
+                double scaleY = Math.Sqrt(transformed.Value.Transform.M12 * transformed.Value.Transform.M12 + transformed.Value.Transform.M22 * transformed.Value.Transform.M22);
+                double inflateX = localInflate * Math.Max(1.0, scaleX);
+                double inflateY = localInflate * Math.Max(1.0, scaleY);
 
                 globalBounds = globalBounds.Inflate(new Thickness(inflateX, inflateY));
 
@@ -319,18 +322,18 @@ namespace LiquidGlassAvaloniaUI
             if (union is null)
                 return default;
 
-            var clip = union.Value.Intersect(clientRect);
+            Rect clip = union.Value.Intersect(clientRect);
             if (clip.Width <= 0 || clip.Height <= 0)
                 return default;
 
             // Snap to pixel grid to keep shader sampling stable and avoid shimmering on fractional DPI.
-            var pixelLeft = (int)Math.Floor(clip.X * scaling);
-            var pixelTop = (int)Math.Floor(clip.Y * scaling);
-            var pixelRight = (int)Math.Ceiling(clip.Right * scaling);
-            var pixelBottom = (int)Math.Ceiling(clip.Bottom * scaling);
-            var pixelRect = new PixelRect(new PixelPoint(pixelLeft, pixelTop), new PixelPoint(pixelRight, pixelBottom));
+            int pixelLeft = (int)Math.Floor(clip.X * scaling);
+            int pixelTop = (int)Math.Floor(clip.Y * scaling);
+            int pixelRight = (int)Math.Ceiling(clip.Right * scaling);
+            int pixelBottom = (int)Math.Ceiling(clip.Bottom * scaling);
+            PixelRect pixelRect = new(new PixelPoint(pixelLeft, pixelTop), new PixelPoint(pixelRight, pixelBottom));
 
-            var dipRect = new Rect(
+            Rect dipRect = new(
                 pixelRect.X / scaling,
                 pixelRect.Y / scaling,
                 pixelRect.Width / scaling,
@@ -361,27 +364,27 @@ namespace LiquidGlassAvaloniaUI
             {
                 case LiquidGlassSurface surface:
                     // Blur is applied as a Gaussian (sigma ~= BlurRadius), so sampling reaches ~3*sigma.
-                    var zoomValue = surface.BackdropZoom;
+                    double zoomValue = surface.BackdropZoom;
                     if (zoomValue <= 0.0005 || double.IsNaN(zoomValue) || double.IsInfinity(zoomValue))
                         zoomValue = 1.0;
 
-                    var zoom = Clamp(zoomValue, 0.1, 10.0);
+                    double zoom = Clamp(zoomValue, 0.1, 10.0);
 
                     // BackdropTransform can shift sampling outside the visible bounds (offset / zoom),
                     // and zoom < 1 expands the sampled region further beyond the control bounds.
-                    var offset = surface.BackdropOffset;
-                    var offsetMargin = Math.Max(Math.Abs(offset.X), Math.Abs(offset.Y)) / zoom;
+                    Vector offset = surface.BackdropOffset;
+                    double offsetMargin = Math.Max(Math.Abs(offset.X), Math.Abs(offset.Y)) / zoom;
 
-                    var zoomOutMargin = 0.0;
+                    double zoomOutMargin = 0.0;
                     if (zoom < 1.0)
                     {
-                        var halfMaxSize = Math.Max(surface.Bounds.Width, surface.Bounds.Height) * 0.5;
+                        double halfMaxSize = Math.Max(surface.Bounds.Width, surface.Bounds.Height) * 0.5;
                         zoomOutMargin = (1.0 / zoom - 1.0) * halfMaxSize;
                     }
 
                     // Chromatic aberration can sample up to ~2x refractionAmount in the worst case,
                     // so capture a wider border to avoid clamping artifacts.
-                    var refractionMargin = Math.Abs(surface.RefractionAmount) * (surface.ChromaticAberration ? 2.0 : 1.0);
+                    double refractionMargin = Math.Abs(surface.RefractionAmount) * (surface.ChromaticAberration ? 2.0 : 1.0);
 
                     return Math.Max(
                         minInflate,
@@ -402,11 +405,11 @@ namespace LiquidGlassAvaloniaUI
 
         private static HashSet<Visual> GetExcludedRoots(TopLevel topLevel, BackdropState state)
         {
-            var excluded = new HashSet<Visual>();
+            HashSet<Visual> excluded = new();
 
-            for (var i = state.Subscribers.Count - 1; i >= 0; i--)
+            for (int i = state.Subscribers.Count - 1; i >= 0; i--)
             {
-                if (!state.Subscribers[i].TryGetTarget(out var control))
+                if (!state.Subscribers[i].TryGetTarget(out Control? control))
                     continue;
 
                 if (!control.IsVisible)
@@ -446,15 +449,15 @@ namespace LiquidGlassAvaloniaUI
 
         private static void RenderVisualWithClip(RenderTargetBitmap target, Visual visual, Rect clipRect, ISet<Visual>? excludedRoots)
         {
-            using var ctx = target.CreateDrawingContext();
+            using DrawingContext ctx = target.CreateDrawingContext();
             LiquidGlassVisualRenderer.Render(ctx, visual, clipRect, excludedRoots);
         }
 
         private static void TrackSubscriber(BackdropState state, Control control)
         {
-            for (var i = state.Subscribers.Count - 1; i >= 0; i--)
+            for (int i = state.Subscribers.Count - 1; i >= 0; i--)
             {
-                if (!state.Subscribers[i].TryGetTarget(out var existing))
+                if (!state.Subscribers[i].TryGetTarget(out Control? existing))
                 {
                     state.Subscribers.RemoveAt(i);
                     continue;
@@ -469,9 +472,9 @@ namespace LiquidGlassAvaloniaUI
 
         private static void InvalidateSubscribers(BackdropState state)
         {
-            for (var i = state.Subscribers.Count - 1; i >= 0; i--)
+            for (int i = state.Subscribers.Count - 1; i >= 0; i--)
             {
-                if (!state.Subscribers[i].TryGetTarget(out var control))
+                if (!state.Subscribers[i].TryGetTarget(out Control? control))
                 {
                     state.Subscribers.RemoveAt(i);
                     continue;
@@ -483,21 +486,21 @@ namespace LiquidGlassAvaloniaUI
 
         private static (SKImage? image, ulong hash) CreateSkImageWithHash(Bitmap bitmap, bool isSameConfig, ulong previousHash)
         {
-            var format = bitmap.Format ?? throw new NotSupportedException("Bitmap pixel format is not readable.");
-            var alpha = bitmap.AlphaFormat ?? throw new NotSupportedException("Bitmap alpha format is not readable.");
+            PixelFormat format = bitmap.Format ?? throw new NotSupportedException("Bitmap pixel format is not readable.");
+            AlphaFormat alpha = bitmap.AlphaFormat ?? throw new NotSupportedException("Bitmap alpha format is not readable.");
 
-            var colorType = format == PixelFormat.Bgra8888 ? SKColorType.Bgra8888 :
+            SKColorType colorType = format == PixelFormat.Bgra8888 ? SKColorType.Bgra8888 :
                 format == PixelFormat.Rgba8888 ? SKColorType.Rgba8888 :
                 throw new NotSupportedException($"Unsupported pixel format: {format}");
 
-            var alphaType = alpha == AlphaFormat.Premul ? SKAlphaType.Premul :
+            SKAlphaType alphaType = alpha == AlphaFormat.Premul ? SKAlphaType.Premul :
                 alpha == AlphaFormat.Unpremul ? SKAlphaType.Unpremul :
                 SKAlphaType.Unpremul;
 
-            var info = new SKImageInfo(bitmap.PixelSize.Width, bitmap.PixelSize.Height, colorType, alphaType);
-            var rowBytes = info.Width * info.BytesPerPixel;
-            var length = rowBytes * info.Height;
-            var bytes = ArrayPool<byte>.Shared.Rent(length);
+            SKImageInfo info = new(bitmap.PixelSize.Width, bitmap.PixelSize.Height, colorType, alphaType);
+            int rowBytes = info.Width * info.BytesPerPixel;
+            int length = rowBytes * info.Height;
+            byte[]? bytes = ArrayPool<byte>.Shared.Rent(length);
 
             unsafe
             {
@@ -509,7 +512,7 @@ namespace LiquidGlassAvaloniaUI
 
             try
             {
-                var hash = ComputeBackdropHash(bytes, rowBytes, info.Width, info.Height);
+                ulong hash = ComputeBackdropHash(bytes, rowBytes, info.Width, info.Height);
                 if (isSameConfig && hash == previousHash)
                     return (null, hash);
 
@@ -530,21 +533,23 @@ namespace LiquidGlassAvaloniaUI
             ulong hash = fnvOffset;
             const int samplesX = 8;
             const int samplesY = 8;
-            var maxX = Math.Max(1, width) - 1;
-            var maxY = Math.Max(1, height) - 1;
+            int maxX = Math.Max(1, width) - 1;
+            int maxY = Math.Max(1, height) - 1;
 
-            for (var sy = 0; sy < samplesY; sy++)
+            for (int sy = 0; sy < samplesY; sy++)
             {
-                var y = samplesY == 1 ? 0 : (int)((long)sy * maxY / (samplesY - 1));
-                var row = y * rowBytes;
+                int y = samplesY == 1 ? 0 : (int)((long)sy * maxY / (samplesY - 1));
+                int row = y * rowBytes;
 
-                for (var sx = 0; sx < samplesX; sx++)
+                for (int sx = 0; sx < samplesX; sx++)
                 {
-                    var x = samplesX == 1 ? 0 : (int)((long)sx * maxX / (samplesX - 1));
-                    var offset = row + x * 4;
+                    int x = samplesX == 1 ? 0 : (int)((long)sx * maxX / (samplesX - 1));
+                    int offset = row + x * 4;
 
-                    for (var i = 0; i < 4; i++)
+                    for (int i = 0; i < 4; i++)
+                    {
                         hash = (hash ^ bytes[offset + i]) * fnvPrime;
+                    }
                 }
             }
 

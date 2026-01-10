@@ -57,14 +57,14 @@ namespace LiquidGlassAvaloniaUI
 
             _animationTimer.Tick += (_, _) =>
             {
-                var now = DateTime.UtcNow;
-                var dt = (now - _lastAnimationTickUtc).TotalSeconds;
+                DateTime now = DateTime.UtcNow;
+                double dt = (now - _lastAnimationTickUtc).TotalSeconds;
                 _lastAnimationTickUtc = now;
 
                 // Clamp dt to avoid huge steps on debugger stops / tab switches.
                 dt = Math.Max(0.0, Math.Min(0.05, dt));
 
-                var any = false;
+                bool any = false;
                 any |= _pressProgress.Step(dt);
                 any |= _position.Step(dt);
 
@@ -76,7 +76,7 @@ namespace LiquidGlassAvaloniaUI
                     _animationTimer.Stop();
             };
 
-            AddHandler(PointerPressedEvent, OnSelfPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+            AddHandler(PointerPressedEvent, OnSelfPointerPressed, RoutingStrategies.Tunnel, true);
         }
 
         public bool IsInteractive
@@ -135,7 +135,7 @@ namespace LiquidGlassAvaloniaUI
             if (_activePointerId is null || e.Pointer.Id != _activePointerId.Value)
                 return;
 
-            var p = e.GetPosition(this);
+            Point p = e.GetPosition(this);
             _position.SnapTo(p);
             ApplyDeformation();
             InvalidateVisual();
@@ -175,16 +175,16 @@ namespace LiquidGlassAvaloniaUI
 
         private void HookTopLevel()
         {
-            var topLevel = TopLevel.GetTopLevel(this);
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
             if (topLevel is null || ReferenceEquals(topLevel, _hookedTopLevel))
                 return;
 
             UnhookTopLevel();
 
             _hookedTopLevel = topLevel;
-            topLevel.AddHandler(InputElement.PointerMovedEvent, OnTopLevelPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
-            topLevel.AddHandler(InputElement.PointerReleasedEvent, OnTopLevelPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
-            topLevel.AddHandler(InputElement.PointerCaptureLostEvent, OnTopLevelPointerCaptureLost, RoutingStrategies.Tunnel, handledEventsToo: true);
+            topLevel.AddHandler(PointerMovedEvent, OnTopLevelPointerMoved, RoutingStrategies.Tunnel, true);
+            topLevel.AddHandler(PointerReleasedEvent, OnTopLevelPointerReleased, RoutingStrategies.Tunnel, true);
+            topLevel.AddHandler(PointerCaptureLostEvent, OnTopLevelPointerCaptureLost, RoutingStrategies.Tunnel, true);
         }
 
         private void UnhookTopLevel()
@@ -192,9 +192,9 @@ namespace LiquidGlassAvaloniaUI
             if (_hookedTopLevel is null)
                 return;
 
-            _hookedTopLevel.RemoveHandler(InputElement.PointerMovedEvent, OnTopLevelPointerMoved);
-            _hookedTopLevel.RemoveHandler(InputElement.PointerReleasedEvent, OnTopLevelPointerReleased);
-            _hookedTopLevel.RemoveHandler(InputElement.PointerCaptureLostEvent, OnTopLevelPointerCaptureLost);
+            _hookedTopLevel.RemoveHandler(PointerMovedEvent, OnTopLevelPointerMoved);
+            _hookedTopLevel.RemoveHandler(PointerReleasedEvent, OnTopLevelPointerReleased);
+            _hookedTopLevel.RemoveHandler(PointerCaptureLostEvent, OnTopLevelPointerCaptureLost);
             _hookedTopLevel = null;
         }
 
@@ -215,34 +215,34 @@ namespace LiquidGlassAvaloniaUI
                 return;
             }
 
-            var width = Bounds.Width;
-            var height = Bounds.Height;
+            double width = Bounds.Width;
+            double height = Bounds.Height;
 
-            var progress = Clamp(_pressProgress.Value, 0.0, 1.0);
-            var maxScale = Math.Max(0.0, InteractiveMaxScaleDip);
+            double progress = Clamp(_pressProgress.Value, 0.0, 1.0);
+            double maxScale = Math.Max(0.0, InteractiveMaxScaleDip);
 
             // Matches LiquidButton.kt layerBlock math (dp converted to px there; DIPs here).
-            var scale = Lerp(1.0, 1.0 + maxScale / height, progress);
+            double scale = Lerp(1.0, 1.0 + maxScale / height, progress);
 
-            var offset = _position.Value - _startPosition;
+            Point offset = _position.Value - _startPosition;
 
-            var minDim = Math.Min(width, height);
-            var maxDim = Math.Max(width, height);
+            double minDim = Math.Min(width, height);
+            double maxDim = Math.Max(width, height);
 
-            var tx = minDim * Math.Tanh(InitialDerivative * offset.X / minDim);
-            var ty = minDim * Math.Tanh(InitialDerivative * offset.Y / minDim);
+            double tx = minDim * Math.Tanh(InitialDerivative * offset.X / minDim);
+            double ty = minDim * Math.Tanh(InitialDerivative * offset.Y / minDim);
 
-            var maxDragScale = maxScale / height;
-            var angle = Math.Atan2(offset.Y, offset.X);
+            double maxDragScale = maxScale / height;
+            double angle = Math.Atan2(offset.Y, offset.X);
 
-            var aspectX = Math.Min(width / height, 1.0);
-            var aspectY = Math.Min(height / width, 1.0);
+            double aspectX = Math.Min(width / height, 1.0);
+            double aspectY = Math.Min(height / width, 1.0);
 
-            var sx =
+            double sx =
                 scale +
                 maxDragScale * Math.Abs(Math.Cos(angle) * offset.X / maxDim) * aspectX;
 
-            var sy =
+            double sy =
                 scale +
                 maxDragScale * Math.Abs(Math.Sin(angle) * offset.Y / maxDim) * aspectY;
 
@@ -260,7 +260,10 @@ namespace LiquidGlassAvaloniaUI
             return Clamp(_pressProgress.Value, 0.0, 1.0);
         }
 
-        internal Point GetInteractiveHighlightPosition() => _position.Value;
+        internal Point GetInteractiveHighlightPosition()
+        {
+            return _position.Value;
+        }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
         {
@@ -274,7 +277,10 @@ namespace LiquidGlassAvaloniaUI
             }
         }
 
-        private static double Lerp(double a, double b, double t) => a + (b - a) * t;
+        private static double Lerp(double a, double b, double t)
+        {
+            return a + (b - a) * t;
+        }
 
         private static double Clamp(double value, double min, double max)
         {
@@ -308,21 +314,21 @@ namespace LiquidGlassAvaloniaUI
 
             public bool Step(double dt)
             {
-                var x = Value;
-                var v = Velocity;
-                var target = Target;
+                double x = Value;
+                double v = Velocity;
+                double target = Target;
 
-                var k = _stiffness;
-                var c = 2.0 * _dampingRatio * Math.Sqrt(k);
+                double k = _stiffness;
+                double c = 2.0 * _dampingRatio * Math.Sqrt(k);
 
-                var a = -k * (x - target) - c * v;
+                double a = -k * (x - target) - c * v;
                 v += a * dt;
                 x += v * dt;
 
                 Value = x;
                 Velocity = v;
 
-                var done = Math.Abs(x - target) <= _threshold && Math.Abs(v) <= _threshold;
+                bool done = Math.Abs(x - target) <= _threshold && Math.Abs(v) <= _threshold;
                 if (done)
                 {
                     Value = target;
@@ -344,11 +350,14 @@ namespace LiquidGlassAvaloniaUI
                 _y = new SpringDouble(stiffness, dampingRatio, positionThreshold);
             }
 
-            public Point Value => new Point(_x.Value, _y.Value);
+            public Point Value
+            {
+                get => new(_x.Value, _y.Value);
+            }
 
             public Point Target
             {
-                get => new Point(_x.Target, _y.Target);
+                get => new(_x.Target, _y.Target);
                 set
                 {
                     _x.Target = value.X;

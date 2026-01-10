@@ -19,14 +19,14 @@ namespace LiquidGlassAvaloniaUI
             _controlBounds = controlBounds;
             _parameters = parameters;
 
-            var radius = Math.Max(0.0, parameters.ShadowRadius);
-            var offset = parameters.ShadowOffset;
-            var pad = radius * 2.0;
+            double radius = Math.Max(0.0, parameters.ShadowRadius);
+            Vector offset = parameters.ShadowOffset;
+            double pad = radius * 2.0;
 
-            var leftPad = pad + Math.Max(0.0, -offset.X);
-            var topPad = pad + Math.Max(0.0, -offset.Y);
-            var rightPad = pad + Math.Max(0.0, offset.X);
-            var bottomPad = pad + Math.Max(0.0, offset.Y);
+            double leftPad = pad + Math.Max(0.0, -offset.X);
+            double topPad = pad + Math.Max(0.0, -offset.Y);
+            double rightPad = pad + Math.Max(0.0, offset.X);
+            double bottomPad = pad + Math.Max(0.0, offset.Y);
 
             _operationBounds = new Rect(
                 -leftPad,
@@ -39,60 +39,69 @@ namespace LiquidGlassAvaloniaUI
         {
         }
 
-        public bool HitTest(Point p) => false;
+        public bool HitTest(Point p)
+        {
+            return false;
+        }
 
-        public Rect Bounds => _operationBounds;
+        public Rect Bounds
+        {
+            get => _operationBounds;
+        }
 
-        public bool Equals(ICustomDrawOperation? other) => false;
+        public bool Equals(ICustomDrawOperation? other)
+        {
+            return false;
+        }
 
         public void Render(ImmediateDrawingContext context)
         {
-            var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+            ISkiaSharpApiLeaseFeature? leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
             if (leaseFeature is null)
                 return;
 
-            using var lease = leaseFeature.Lease();
-            var canvas = lease.SkCanvas;
+            using ISkiaSharpApiLease lease = leaseFeature.Lease();
+            SKCanvas canvas = lease.SkCanvas;
 
-            var size = new SKSize((float)_controlBounds.Width, (float)_controlBounds.Height);
+            SKSize size = new((float)_controlBounds.Width, (float)_controlBounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
 
-            var radius = (float)Clamp(_parameters.ShadowRadius, 0.0, 512.0);
+            float radius = (float)Clamp(_parameters.ShadowRadius, 0.0, 512.0);
             if (radius <= 0.001f)
                 return;
 
-            var opacity = (float)Clamp(_parameters.ShadowOpacity, 0.0, 1.0);
-            var color = _parameters.ShadowColor;
-            var alpha = (byte)Clamp(color.A * opacity, 0.0, 255.0);
+            float opacity = (float)Clamp(_parameters.ShadowOpacity, 0.0, 1.0);
+            Color color = _parameters.ShadowColor;
+            byte alpha = (byte)Clamp(color.A * opacity, 0.0, 255.0);
             if (alpha <= 0)
                 return;
 
-            var offsetX = (float)_parameters.ShadowOffset.X;
-            var offsetY = (float)_parameters.ShadowOffset.Y;
+            float offsetX = (float)_parameters.ShadowOffset.X;
+            float offsetY = (float)_parameters.ShadowOffset.Y;
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = LiquidGlassPathUtils.GetCornerRadii(_parameters.CornerRadius, maxRadius);
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = LiquidGlassPathUtils.GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
 
-            using var path = LiquidGlassPathUtils.CreateRoundRectPath(rect, cornerRadii);
-            using var blur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, radius);
+            using SKPath path = LiquidGlassPathUtils.CreateRoundRectPath(rect, cornerRadii);
+            using SKMaskFilter? blur = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, radius);
 
-            using var shadowPaint = new SKPaint
+            using SKPaint shadowPaint = new()
             {
                 Color = new SKColor(color.R, color.G, color.B, alpha),
                 MaskFilter = blur,
                 IsAntialias = true
             };
 
-            using var clearPaint = new SKPaint
+            using SKPaint clearPaint = new()
             {
                 BlendMode = SKBlendMode.Clear,
                 IsAntialias = true
             };
 
-            var pad = radius * 2.0f;
-            var layerBounds = SKRect.Create(-pad, -pad, size.Width + pad * 2.0f, size.Height + pad * 2.0f);
+            float pad = radius * 2.0f;
+            SKRect layerBounds = SKRect.Create(-pad, -pad, size.Width + pad * 2.0f, size.Height + pad * 2.0f);
 
             canvas.SaveLayer(layerBounds, null);
 
@@ -129,54 +138,66 @@ namespace LiquidGlassAvaloniaUI
         {
         }
 
-        public bool HitTest(Point p) => false;
+        public bool HitTest(Point p)
+        {
+            return false;
+        }
 
-        public Rect Bounds => _bounds;
+        public Rect Bounds
+        {
+            get => _bounds;
+        }
 
-        public bool Equals(ICustomDrawOperation? other) => false;
+        public bool Equals(ICustomDrawOperation? other)
+        {
+            return false;
+        }
 
         public void Render(ImmediateDrawingContext context)
         {
-            var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+            ISkiaSharpApiLeaseFeature? leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
             if (leaseFeature is null)
                 return;
 
-            using var lease = leaseFeature.Lease();
-            var canvas = lease.SkCanvas;
+            using ISkiaSharpApiLease lease = leaseFeature.Lease();
+            SKCanvas canvas = lease.SkCanvas;
 
-            var size = new SKSize((float)_bounds.Width, (float)_bounds.Height);
+            SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
             if (size.Width <= 0 || size.Height <= 0)
                 return;
 
-            var radius = (float)Clamp(_parameters.InnerShadowRadius, 0.0, 512.0);
+            float radius = (float)Clamp(_parameters.InnerShadowRadius, 0.0, 512.0);
             if (radius <= 0.001f)
                 return;
 
-            var opacity = (float)Clamp(_parameters.InnerShadowOpacity, 0.0, 1.0);
-            var color = _parameters.InnerShadowColor;
-            var alpha = (byte)Clamp(color.A * opacity, 0.0, 255.0);
+            float opacity = (float)Clamp(_parameters.InnerShadowOpacity, 0.0, 1.0);
+            Color color = _parameters.InnerShadowColor;
+            byte alpha = (byte)Clamp(color.A * opacity, 0.0, 255.0);
             if (alpha <= 0)
                 return;
 
-            var offsetX = (float)_parameters.InnerShadowOffset.X;
-            var offsetY = (float)_parameters.InnerShadowOffset.Y;
+            float offsetX = (float)_parameters.InnerShadowOffset.X;
+            float offsetY = (float)_parameters.InnerShadowOffset.Y;
 
-            var maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
-            var cornerRadii = LiquidGlassPathUtils.GetCornerRadii(_parameters.CornerRadius, maxRadius);
-            var rect = SKRect.Create(0, 0, size.Width, size.Height);
+            float maxRadius = Math.Min(size.Width, size.Height) * 0.5f;
+            float[] cornerRadii = LiquidGlassPathUtils.GetCornerRadii(_parameters.CornerRadius, maxRadius);
+            SKRect rect = SKRect.Create(0, 0, size.Width, size.Height);
 
-            using var path = LiquidGlassPathUtils.CreateRoundRectPath(rect, cornerRadii);
+            using SKPath path = LiquidGlassPathUtils.CreateRoundRectPath(rect, cornerRadii);
 
-            using var blur = SKImageFilter.CreateBlur(radius, radius, SKShaderTileMode.Decal, null, rect);
-            using var layerPaint = new SKPaint { ImageFilter = blur };
+            using SKImageFilter blur = SKImageFilter.CreateBlur(radius, radius, SKShaderTileMode.Decal, null, rect);
+            using SKPaint layerPaint = new()
+            {
+                ImageFilter = blur
+            };
 
-            using var fillPaint = new SKPaint
+            using SKPaint fillPaint = new()
             {
                 Color = new SKColor(color.R, color.G, color.B, alpha),
                 IsAntialias = true
             };
 
-            using var clearPaint = new SKPaint
+            using SKPaint clearPaint = new()
             {
                 BlendMode = SKBlendMode.Clear,
                 IsAntialias = true

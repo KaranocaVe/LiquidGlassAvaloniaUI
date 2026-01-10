@@ -13,7 +13,7 @@ using SkiaSharp;
 namespace LiquidGlassAvaloniaUI
 {
     /// <summary>
-    /// A composited “liquid glass” surface inspired by AndroidLiquidGlass’ backdrop pipeline:
+    /// A composited “liquid glass” surface:
     /// vibrancy + blur + lens refraction + (optional) highlights + shadows.
     /// </summary>
     public class LiquidGlassSurface : ContentControl
@@ -313,7 +313,7 @@ namespace LiquidGlassAvaloniaUI
         }
 
         /// <summary>
-        /// Enables the progressive blur mask stage (similar to AndroidLiquidGlass’ ProgressiveBlurContent).
+        /// Enables the progressive blur mask stage.
         /// </summary>
         public bool ProgressiveBlurEnabled
         {
@@ -347,7 +347,7 @@ namespace LiquidGlassAvaloniaUI
 
         /// <summary>
         /// Enables adaptive luminance mode which samples the backdrop behind this surface and adjusts
-        /// rendering parameters to improve legibility (inspired by AndroidLiquidGlass’ AdaptiveLuminanceGlassContent).
+        /// rendering parameters to improve legibility.
         /// </summary>
         public bool AdaptiveLuminanceEnabled
         {
@@ -528,7 +528,7 @@ namespace LiquidGlassAvaloniaUI
 
             if (AdaptiveLuminanceEnabled)
             {
-                // Mirrors AdaptiveLuminanceGlassContent's tone mapping (see AndroidLiquidGlass catalog).
+                // Tone-mapping heuristic based on sampled backdrop luminance.
                 var luminance = Clamp(AdaptiveLuminance, 0.0, 1.0);
                 var l = luminance * 2.0 - 1.0;
                 l = Math.Sign(l) * l * l;

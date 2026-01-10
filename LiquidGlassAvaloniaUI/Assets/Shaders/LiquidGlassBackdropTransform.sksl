@@ -1,5 +1,5 @@
 // Backdrop transform stage (zoom + offset)
-// Used for magnifier-style sampling (AndroidLiquidGlass: onDrawBackdrop with scale/translate).
+// Used for magnifier-style sampling.
 
 uniform shader content;
 

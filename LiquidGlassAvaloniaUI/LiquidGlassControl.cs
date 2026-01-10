@@ -24,7 +24,7 @@ namespace LiquidGlassAvaloniaUI
 
     /// <summary>
     /// Legacy “liquid glass” control kept for compatibility.
-    /// Prefer <see cref="LiquidGlassSurface"/> for the AndroidLiquidGlass-style pipeline.
+    /// Prefer <see cref="LiquidGlassSurface"/> for the full liquid-glass pipeline.
     /// </summary>
     [Obsolete("Use LiquidGlassSurface. This control keeps legacy parameter names and is kept for compatibility.")]
     public class LiquidGlassControl : Control
@@ -360,7 +360,7 @@ namespace LiquidGlassAvaloniaUI
 
             var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
 
-            // Legacy control: map old property names to AndroidLiquidGlass-style pipeline parameters.
+            // Legacy control: map old property names to the current pipeline parameters.
             var parameters = new LiquidGlassDrawParameters
             {
                 CornerRadius = new CornerRadius(CornerRadius),
@@ -400,5 +400,5 @@ namespace LiquidGlassAvaloniaUI
         }
     }
 
-    // NOTE: The old public LiquidGlassParameters struct was removed as part of the AndroidLiquidGlass-style rewrite.
+    // NOTE: The old public LiquidGlassParameters struct was removed as part of the pipeline rewrite.
 }

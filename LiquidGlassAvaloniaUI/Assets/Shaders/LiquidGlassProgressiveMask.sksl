@@ -1,6 +1,5 @@
 // Progressive alpha-mask + tint stage
-// Mirrors AndroidLiquidGlass' ProgressiveBlurContent (AlphaMask runtime shader),
-// adapted for SKRuntimeEffect and premultiplied output.
+// Adapted for SKRuntimeEffect and premultiplied output.
 
 uniform shader content;
 

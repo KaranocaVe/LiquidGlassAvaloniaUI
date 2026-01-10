@@ -1,5 +1,5 @@
 // Liquid Glass Gamma Adjustment Shader
-// Mirrors AndroidLiquidGlass' GammaAdjustment runtime shader, adapted for SKRuntimeEffect.
+// Adapted for SKRuntimeEffect.
 
 uniform shader content;
 uniform float power;

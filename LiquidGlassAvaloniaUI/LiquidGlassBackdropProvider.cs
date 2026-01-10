@@ -362,7 +362,31 @@ namespace LiquidGlassAvaloniaUI
             {
                 case LiquidGlassSurface surface:
                     // Blur is applied as a Gaussian (sigma ~= BlurRadius), so sampling reaches ~3*sigma.
-                    return Math.Max(minInflate, Math.Abs(surface.RefractionAmount) + surface.BlurRadius * 3.0 + 6.0);
+                    var zoomValue = surface.BackdropZoom;
+                    if (zoomValue <= 0.0005 || double.IsNaN(zoomValue) || double.IsInfinity(zoomValue))
+                        zoomValue = 1.0;
+
+                    var zoom = Clamp(zoomValue, 0.1, 10.0);
+
+                    // BackdropTransform can shift sampling outside the visible bounds (offset / zoom),
+                    // and zoom < 1 expands the sampled region further beyond the control bounds.
+                    var offset = surface.BackdropOffset;
+                    var offsetMargin = Math.Max(Math.Abs(offset.X), Math.Abs(offset.Y)) / zoom;
+
+                    var zoomOutMargin = 0.0;
+                    if (zoom < 1.0)
+                    {
+                        var halfMaxSize = Math.Max(surface.Bounds.Width, surface.Bounds.Height) * 0.5;
+                        zoomOutMargin = (1.0 / zoom - 1.0) * halfMaxSize;
+                    }
+
+                    // Chromatic aberration can sample up to ~2x refractionAmount in the worst case,
+                    // so capture a wider border to avoid clamping artifacts.
+                    var refractionMargin = Math.Abs(surface.RefractionAmount) * (surface.ChromaticAberration ? 2.0 : 1.0);
+
+                    return Math.Max(
+                        minInflate,
+                        refractionMargin + surface.BlurRadius * 3.0 + 6.0 + offsetMargin + zoomOutMargin);
                 case LiquidGlassCard card:
                     return Math.Max(minInflate, Math.Abs(card.DisplacementScale) + card.BlurAmount + 4.0);
                 case LiquidGlassControl legacy:
@@ -375,6 +399,15 @@ namespace LiquidGlassAvaloniaUI
                     return minInflate;
             }
 #pragma warning restore CS0618
+        }
+
+        private static double Clamp(double value, double min, double max)
+        {
+            if (value < min)
+                return min;
+            if (value > max)
+                return max;
+            return value;
         }
 
         private static HashSet<Visual> GetExcludedRoots(TopLevel topLevel, BackdropState state)

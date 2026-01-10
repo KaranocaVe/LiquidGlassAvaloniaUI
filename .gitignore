@@ -58,3 +58,35 @@ nunit-*.xml
 
 # JetBrains Rider / IntelliJ
 .idea/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nuget.props
+.nuget/
+packages/
+
+# Avalonia UI specific
+*.axml.designer.cs
+
+# Backup files
+*.bak
+*.tmp
+*.temp

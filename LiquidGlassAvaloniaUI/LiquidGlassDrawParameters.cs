@@ -7,7 +7,7 @@ namespace LiquidGlassAvaloniaUI
     {
         Lens,
         InteractiveHighlight,
-        Highlight,
+        Highlight
     }
 
     internal struct LiquidGlassDrawParameters

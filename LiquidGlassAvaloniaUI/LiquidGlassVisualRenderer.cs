@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -35,14 +36,14 @@ namespace LiquidGlassAvaloniaUI
             if (!visual.IsVisible || visual.Opacity <= 0)
                 return;
 
-            var rect = new Rect(bounds.Size);
+            Rect rect = new(bounds.Size);
             Matrix transform;
 
             if (visual.RenderTransform?.Value is { } rt)
             {
-                var origin = visual.RenderTransformOrigin.ToPixels(visual.Bounds.Size);
-                var offset = Matrix.CreateTranslation(origin);
-                transform = (-offset) * rt * (offset) * Matrix.CreateTranslation(bounds.Position);
+                Point origin = visual.RenderTransformOrigin.ToPixels(visual.Bounds.Size);
+                Matrix offset = Matrix.CreateTranslation(origin);
+                transform = -offset * rt * offset * Matrix.CreateTranslation(bounds.Position);
             }
             else
             {
@@ -58,13 +59,13 @@ namespace LiquidGlassAvaloniaUI
             using (visual.Clip is { } clip ? context.PushGeometryClip(clip) : default(DrawingContext.PushedState?))
             using (visual.OpacityMask is { } opacityMask ? context.PushOpacityMask(opacityMask, rect) : default(DrawingContext.PushedState?))
             {
-                var totalTransform = transform * parentTransform;
-                var visualBounds = rect.TransformToAABB(totalTransform);
+                Matrix totalTransform = transform * parentTransform;
+                Rect visualBounds = rect.TransformToAABB(totalTransform);
 
                 if (visualBounds.Intersects(clipRect))
                     visual.Render(context);
 
-                var children = GetOrderedChildren(visual);
+                IReadOnlyList<Visual> children = GetOrderedChildren(visual);
 
                 if (visual.ClipToBounds)
                 {
@@ -72,7 +73,7 @@ namespace LiquidGlassAvaloniaUI
                     clipRect = rect;
                 }
 
-                foreach (var child in children)
+                foreach (Visual? child in children)
                 {
                     Render(context, child, child.Bounds, totalTransform, clipRect, excludedRoots);
                 }
@@ -84,7 +85,7 @@ namespace LiquidGlassAvaloniaUI
             if (!visual.ClipToBounds)
                 return default;
 
-            if (TryGetClipToBoundsRadius(visual, out var radius))
+            if (TryGetClipToBoundsRadius(visual, out CornerRadius radius))
                 return context.PushClip(new RoundedRect(rect, radius));
 
             return context.PushClip(rect);
@@ -94,8 +95,8 @@ namespace LiquidGlassAvaloniaUI
         {
             radius = default;
 
-            var type = visual.GetType();
-            var prop = type.GetProperty("ClipToBoundsRadius", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            Type type = visual.GetType();
+            PropertyInfo? prop = type.GetProperty("ClipToBoundsRadius", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
 
             if (prop is null)
             {
@@ -119,13 +120,13 @@ namespace LiquidGlassAvaloniaUI
 
         private static IReadOnlyList<Visual> GetOrderedChildren(Visual visual)
         {
-            var children = visual.GetVisualChildren();
+            IEnumerable<Visual> children = visual.GetVisualChildren();
 
             List<Visual>? list = null;
             int? firstZIndex = null;
-            var hasNonUniformZIndex = false;
+            bool hasNonUniformZIndex = false;
 
-            foreach (var child in children)
+            foreach (Visual? child in children)
             {
                 list ??= new List<Visual>();
                 list.Add(child);
@@ -146,4 +147,3 @@ namespace LiquidGlassAvaloniaUI
         }
     }
 }
-

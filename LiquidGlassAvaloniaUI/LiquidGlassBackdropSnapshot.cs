@@ -26,26 +26,31 @@ namespace LiquidGlassAvaloniaUI
             public int OpacityQ { get; }
             public int BlurSigmaPxQ { get; }
 
-            public bool Equals(FilteredKey other) =>
-                BrightnessQ == other.BrightnessQ
-                && ContrastQ == other.ContrastQ
-                && SaturationQ == other.SaturationQ
-                && ExposureEvQ == other.ExposureEvQ
-                && OpacityQ == other.OpacityQ
-                && BlurSigmaPxQ == other.BlurSigmaPxQ;
+            public bool Equals(FilteredKey other)
+            {
+                return BrightnessQ == other.BrightnessQ
+                       && ContrastQ == other.ContrastQ
+                       && SaturationQ == other.SaturationQ
+                       && ExposureEvQ == other.ExposureEvQ
+                       && OpacityQ == other.OpacityQ
+                       && BlurSigmaPxQ == other.BlurSigmaPxQ;
+            }
 
-            public override bool Equals(object? obj) => obj is FilteredKey other && Equals(other);
+            public override bool Equals(object? obj)
+            {
+                return obj is FilteredKey other && Equals(other);
+            }
 
             public override int GetHashCode()
             {
                 unchecked
                 {
-                    var hashCode = BrightnessQ;
-                    hashCode = (hashCode * 397) ^ ContrastQ;
-                    hashCode = (hashCode * 397) ^ SaturationQ;
-                    hashCode = (hashCode * 397) ^ ExposureEvQ;
-                    hashCode = (hashCode * 397) ^ OpacityQ;
-                    hashCode = (hashCode * 397) ^ BlurSigmaPxQ;
+                    int hashCode = BrightnessQ;
+                    hashCode = hashCode * 397 ^ ContrastQ;
+                    hashCode = hashCode * 397 ^ SaturationQ;
+                    hashCode = hashCode * 397 ^ ExposureEvQ;
+                    hashCode = hashCode * 397 ^ OpacityQ;
+                    hashCode = hashCode * 397 ^ BlurSigmaPxQ;
                     return hashCode;
                 }
             }
@@ -112,7 +117,7 @@ namespace LiquidGlassAvaloniaUI
                 _filtered ??= new Dictionary<FilteredKey, FilteredResult>();
                 _filteredOrder ??= new Queue<FilteredKey>();
 
-                if (_filtered.TryGetValue(key, out var existing))
+                if (_filtered.TryGetValue(key, out FilteredResult existing))
                 {
                     existing.Image.Dispose();
                     _filtered[key] = result;
@@ -124,8 +129,8 @@ namespace LiquidGlassAvaloniaUI
 
                 while (_filtered.Count > MaxFilteredEntries && _filteredOrder.Count > 0)
                 {
-                    var evictKey = _filteredOrder.Dequeue();
-                    if (_filtered.TryGetValue(evictKey, out var evictValue) && !evictKey.Equals(key))
+                    FilteredKey evictKey = _filteredOrder.Dequeue();
+                    if (_filtered.TryGetValue(evictKey, out FilteredResult evictValue) && !evictKey.Equals(key))
                     {
                         _filtered.Remove(evictKey);
                         evictValue.Image.Dispose();
@@ -141,7 +146,7 @@ namespace LiquidGlassAvaloniaUI
                 if (System.Threading.Volatile.Read(ref _disposed) != 0)
                     return false;
 
-                var current = System.Threading.Volatile.Read(ref _leases);
+                int current = System.Threading.Volatile.Read(ref _leases);
                 if (System.Threading.Interlocked.CompareExchange(ref _leases, current + 1, current) == current)
                 {
                     if (System.Threading.Volatile.Read(ref _disposed) != 0)
@@ -157,7 +162,7 @@ namespace LiquidGlassAvaloniaUI
 
         public void ReleaseLease()
         {
-            var remaining = System.Threading.Interlocked.Decrement(ref _leases);
+            int remaining = System.Threading.Interlocked.Decrement(ref _leases);
             if (remaining < 0)
                 return;
 
@@ -181,7 +186,7 @@ namespace LiquidGlassAvaloniaUI
             {
                 if (_filtered is not null)
                 {
-                    foreach (var pair in _filtered)
+                    foreach (KeyValuePair<FilteredKey, FilteredResult> pair in _filtered)
                         pair.Value.Image.Dispose();
                     _filtered = null;
                     _filteredOrder = null;

@@ -471,21 +471,21 @@ namespace LiquidGlassAvaloniaUI
             if (Bounds.Width <= 0 || Bounds.Height <= 0)
                 return;
 
-            var parameters = CreateDrawParameters();
-            var controlBounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
+            LiquidGlassDrawParameters parameters = CreateDrawParameters();
+            Rect controlBounds = new(0, 0, Bounds.Width, Bounds.Height);
 
             if (ShadowEnabled && ShadowOpacity > 0.001 && ShadowColor.A > 0 && ShadowRadius > 0.001)
                 context.Custom(new LiquidGlassShadowDrawOperation(controlBounds, parameters));
 
             LiquidGlassBackdropProvider.EnsureSnapshot(this);
-            var snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+            LiquidGlassBackdropSnapshot? snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
 
             context.Custom(new LiquidGlassDrawOperation(controlBounds, parameters, snapshot, LiquidGlassDrawPass.Lens));
         }
 
         internal LiquidGlassDrawParameters CreateDrawParameters()
         {
-            var parameters = new LiquidGlassDrawParameters
+            LiquidGlassDrawParameters parameters = new()
             {
                 CornerRadius = CornerRadius,
                 BackdropZoom = BackdropZoom,
@@ -523,14 +523,14 @@ namespace LiquidGlassAvaloniaUI
                 InnerShadowRadius = InnerShadowRadius,
                 InnerShadowOffset = InnerShadowOffset,
                 InnerShadowColor = InnerShadowColor,
-                InnerShadowOpacity = InnerShadowOpacity,
+                InnerShadowOpacity = InnerShadowOpacity
             };
 
             if (AdaptiveLuminanceEnabled)
             {
                 // Tone-mapping heuristic based on sampled backdrop luminance.
-                var luminance = Clamp(AdaptiveLuminance, 0.0, 1.0);
-                var l = luminance * 2.0 - 1.0;
+                double luminance = Clamp(AdaptiveLuminance, 0.0, 1.0);
+                double l = luminance * 2.0 - 1.0;
                 l = Math.Sign(l) * l * l;
 
                 parameters.Vibrancy = 1.5;
@@ -625,7 +625,7 @@ namespace LiquidGlassAvaloniaUI
         {
             if (_adaptiveLuminanceTimer is not null)
             {
-                var desired = TimeSpan.FromMilliseconds(Math.Max(16.0, AdaptiveLuminanceUpdateIntervalMs));
+                TimeSpan desired = TimeSpan.FromMilliseconds(Math.Max(16.0, AdaptiveLuminanceUpdateIntervalMs));
                 if (_adaptiveLuminanceTimer.Interval != desired)
                     _adaptiveLuminanceTimer.Interval = desired;
                 if (!_adaptiveLuminanceTimer.IsEnabled)
@@ -664,11 +664,11 @@ namespace LiquidGlassAvaloniaUI
 
             LiquidGlassBackdropProvider.EnsureSnapshot(this);
 
-            if (!TrySampleBackdropLuminance(out var sampled))
+            if (!TrySampleBackdropLuminance(out double sampled))
                 return;
 
-            var smoothing = Clamp(AdaptiveLuminanceSmoothing, 0.0, 1.0);
-            var next = AdaptiveLuminance + (sampled - AdaptiveLuminance) * smoothing;
+            double smoothing = Clamp(AdaptiveLuminanceSmoothing, 0.0, 1.0);
+            double next = AdaptiveLuminance + (sampled - AdaptiveLuminance) * smoothing;
             if (Math.Abs(next - AdaptiveLuminance) > 0.0005)
             {
                 AdaptiveLuminance = next;
@@ -680,37 +680,37 @@ namespace LiquidGlassAvaloniaUI
         {
             luminance = 0.0;
 
-            var topLevel = TopLevel.GetTopLevel(this);
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
             if (topLevel is null)
                 return false;
 
-            var snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
+            LiquidGlassBackdropSnapshot? snapshot = LiquidGlassBackdropProvider.TryGetSnapshot(this);
             if (snapshot is null || !snapshot.TryAddLease())
                 return false;
 
             try
             {
-                if (!TryGetBoundsInTopLevelPixels(topLevel, out var boundsPx))
+                if (!TryGetBoundsInTopLevelPixels(topLevel, out PixelRect boundsPx))
                     return false;
 
-                var rel = new PixelRect(
+                PixelRect rel = new(
                     new PixelPoint(boundsPx.X - snapshot.OriginInPixels.X, boundsPx.Y - snapshot.OriginInPixels.Y),
                     boundsPx.Size);
 
-                var imgW = snapshot.Image.Width;
-                var imgH = snapshot.Image.Height;
+                int imgW = snapshot.Image.Width;
+                int imgH = snapshot.Image.Height;
 
-                var x0 = Clamp((int)rel.X, 0, imgW - 1);
-                var y0 = Clamp((int)rel.Y, 0, imgH - 1);
-                var x1 = Clamp((int)rel.Right, 0, imgW);
-                var y1 = Clamp((int)rel.Bottom, 0, imgH);
-                var w = x1 - x0;
-                var h = y1 - y0;
+                int x0 = Clamp((int)rel.X, 0, imgW - 1);
+                int y0 = Clamp((int)rel.Y, 0, imgH - 1);
+                int x1 = Clamp((int)rel.Right, 0, imgW);
+                int y1 = Clamp((int)rel.Bottom, 0, imgH);
+                int w = x1 - x0;
+                int h = y1 - y0;
                 if (w <= 1 || h <= 1)
                     return false;
 
-                using var pixmap = snapshot.Image.PeekPixels();
-                using var fallbackBitmap = pixmap is null
+                using SKPixmap? pixmap = snapshot.Image.PeekPixels();
+                using SKBitmap? fallbackBitmap = pixmap is null
                     ? new SKBitmap(new SKImageInfo(imgW, imgH, SKColorType.Bgra8888, SKAlphaType.Premul))
                     : null;
 
@@ -722,21 +722,21 @@ namespace LiquidGlassAvaloniaUI
 
                 const int samplesX = 5;
                 const int samplesY = 5;
-                var sum = 0.0;
-                var count = 0;
+                double sum = 0.0;
+                int count = 0;
 
-                for (var sy = 0; sy < samplesY; sy++)
+                for (int sy = 0; sy < samplesY; sy++)
                 {
-                    var yy = y0 + (int)Math.Round((double)sy * (h - 1) / (samplesY - 1));
-                    for (var sx = 0; sx < samplesX; sx++)
+                    int yy = y0 + (int)Math.Round((double)sy * (h - 1) / (samplesY - 1));
+                    for (int sx = 0; sx < samplesX; sx++)
                     {
-                        var xx = x0 + (int)Math.Round((double)sx * (w - 1) / (samplesX - 1));
-                        var c = pixmap is not null
+                        int xx = x0 + (int)Math.Round((double)sx * (w - 1) / (samplesX - 1));
+                        SKColor c = pixmap is not null
                             ? pixmap.GetPixelColor(xx, yy)
                             : fallbackBitmap!.GetPixel(xx, yy);
-                        var r = c.Red / 255.0;
-                        var g = c.Green / 255.0;
-                        var b = c.Blue / 255.0;
+                        double r = c.Red / 255.0;
+                        double g = c.Green / 255.0;
+                        double b = c.Blue / 255.0;
                         sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
                         count++;
                     }
@@ -758,30 +758,30 @@ namespace LiquidGlassAvaloniaUI
         {
             pixelRect = default;
 
-            var transform = this.TransformToVisual(topLevel);
+            Matrix? transform = this.TransformToVisual(topLevel);
             if (transform is null)
                 return false;
 
-            var bounds = new Rect(0, 0, Bounds.Width, Bounds.Height);
-            var p0 = bounds.TopLeft.Transform(transform.Value);
-            var p1 = bounds.TopRight.Transform(transform.Value);
-            var p2 = bounds.BottomRight.Transform(transform.Value);
-            var p3 = bounds.BottomLeft.Transform(transform.Value);
+            Rect bounds = new(0, 0, Bounds.Width, Bounds.Height);
+            Point p0 = bounds.TopLeft.Transform(transform.Value);
+            Point p1 = bounds.TopRight.Transform(transform.Value);
+            Point p2 = bounds.BottomRight.Transform(transform.Value);
+            Point p3 = bounds.BottomLeft.Transform(transform.Value);
 
-            var left = Math.Min(Math.Min(p0.X, p1.X), Math.Min(p2.X, p3.X));
-            var right = Math.Max(Math.Max(p0.X, p1.X), Math.Max(p2.X, p3.X));
-            var top = Math.Min(Math.Min(p0.Y, p1.Y), Math.Min(p2.Y, p3.Y));
-            var bottom = Math.Max(Math.Max(p0.Y, p1.Y), Math.Max(p2.Y, p3.Y));
+            double left = Math.Min(Math.Min(p0.X, p1.X), Math.Min(p2.X, p3.X));
+            double right = Math.Max(Math.Max(p0.X, p1.X), Math.Max(p2.X, p3.X));
+            double top = Math.Min(Math.Min(p0.Y, p1.Y), Math.Min(p2.Y, p3.Y));
+            double bottom = Math.Max(Math.Max(p0.Y, p1.Y), Math.Max(p2.Y, p3.Y));
 
-            var aabb = new Rect(left, top, Math.Max(0.0, right - left), Math.Max(0.0, bottom - top));
+            Rect aabb = new(left, top, Math.Max(0.0, right - left), Math.Max(0.0, bottom - top));
             if (aabb.Width <= 0 || aabb.Height <= 0)
                 return false;
 
-            var scaling = topLevel.RenderScaling;
-            var pxLeft = (int)Math.Floor(aabb.X * scaling);
-            var pxTop = (int)Math.Floor(aabb.Y * scaling);
-            var pxRight = (int)Math.Ceiling(aabb.Right * scaling);
-            var pxBottom = (int)Math.Ceiling(aabb.Bottom * scaling);
+            double scaling = topLevel.RenderScaling;
+            int pxLeft = (int)Math.Floor(aabb.X * scaling);
+            int pxTop = (int)Math.Floor(aabb.Y * scaling);
+            int pxRight = (int)Math.Ceiling(aabb.Right * scaling);
+            int pxBottom = (int)Math.Ceiling(aabb.Bottom * scaling);
 
             if (pxRight <= pxLeft || pxBottom <= pxTop)
                 return false;
@@ -790,7 +790,10 @@ namespace LiquidGlassAvaloniaUI
             return true;
         }
 
-        private static double Lerp(double a, double b, double t) => a + (b - a) * Clamp(t, 0.0, 1.0);
+        private static double Lerp(double a, double b, double t)
+        {
+            return a + (b - a) * Clamp(t, 0.0, 1.0);
+        }
 
         private static double Clamp(double value, double min, double max)
         {
@@ -810,13 +813,13 @@ namespace LiquidGlassAvaloniaUI
         {
             return new FuncControlTemplate<LiquidGlassSurface>((_, ns) =>
             {
-                var interactiveOverlay = new LiquidGlassInteractiveOverlay
+                LiquidGlassInteractiveOverlay interactiveOverlay = new LiquidGlassInteractiveOverlay
                 {
                     Name = "PART_InteractiveOverlay",
                     IsHitTestVisible = false
                 }.RegisterInNameScope(ns);
 
-                var presenter = new ContentPresenter
+                ContentPresenter presenter = new ContentPresenter
                 {
                     Name = "PART_ContentPresenter",
                     [~ContentPresenter.ContentProperty] = new TemplateBinding(ContentProperty),
@@ -825,13 +828,13 @@ namespace LiquidGlassAvaloniaUI
                     [~ContentPresenter.HorizontalContentAlignmentProperty] = new TemplateBinding(HorizontalContentAlignmentProperty)
                 }.RegisterInNameScope(ns);
 
-                var frontOverlay = new LiquidGlassFrontOverlay
+                LiquidGlassFrontOverlay frontOverlay = new LiquidGlassFrontOverlay
                 {
                     Name = "PART_FrontOverlay",
                     IsHitTestVisible = false
                 }.RegisterInNameScope(ns);
 
-                var grid = new Grid();
+                Grid grid = new();
                 grid.Children.Add(interactiveOverlay);
                 grid.Children.Add(presenter);
                 grid.Children.Add(frontOverlay);

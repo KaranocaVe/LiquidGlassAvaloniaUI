@@ -357,7 +357,6 @@ namespace LiquidGlassAvaloniaUI
             // Conservative but small default: enough for 2 DIP blur + 24 DIP refraction.
             const double minInflate = 32.0;
 
-#pragma warning disable CS0618
             switch (control)
             {
                 case LiquidGlassSurface surface:
@@ -387,18 +386,9 @@ namespace LiquidGlassAvaloniaUI
                     return Math.Max(
                         minInflate,
                         refractionMargin + surface.BlurRadius * 3.0 + 6.0 + offsetMargin + zoomOutMargin);
-                case LiquidGlassCard card:
-                    return Math.Max(minInflate, Math.Abs(card.DisplacementScale) + card.BlurAmount + 4.0);
-                case LiquidGlassControl legacy:
-                    return Math.Max(minInflate, Math.Abs(legacy.DisplacementScale) + legacy.BlurAmount + 4.0);
-                case LiquidGlassButton button:
-                    return Math.Max(minInflate, Math.Abs(button.DisplacementScale) + button.BlurAmount + 4.0);
-                case DraggableLiquidGlassCard draggable:
-                    return Math.Max(minInflate, Math.Abs(draggable.DisplacementScale) + draggable.BlurAmount + 4.0);
                 default:
                     return minInflate;
             }
-#pragma warning restore CS0618
         }
 
         private static double Clamp(double value, double min, double max)

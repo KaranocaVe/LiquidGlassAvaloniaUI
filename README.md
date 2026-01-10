@@ -44,6 +44,7 @@ Recommended (new API):
 ## 🙏 Credits
 
 - Inspired by [liquid-glass-react](https://github.com/rdev/liquid-glass-react/tree/master)
+- Thanks to [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)
 - Built with [AvaloniaUI](https://avaloniaui.net/)
 - Powered by [SkiaSharp](https://github.com/mono/SkiaSharp)
 

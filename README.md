@@ -38,8 +38,6 @@ To validate rendering headlessly and optionally emit PNGs:
 
 ## 📖 Usage
 
-Recommended (new API):
-
 - `LiquidGlassSurface` - A `ContentControl` that draws the liquid-glass pipeline behind its child and clips to `CornerRadius`.
 - `LiquidGlassInteractiveSurface` - Adds press/drag deformation + interactive highlight.
 
@@ -54,8 +52,6 @@ While the framework offers impressive cross-platform capabilities, there is stil
 - Inspired by [liquid-glass-react](https://github.com/rdev/liquid-glass-react/tree/master)
 - Thanks to [Kyant0/AndroidLiquidGlass](https://github.com/Kyant0/AndroidLiquidGlass)
 - Assisted by OpenAI Codex (GPT-5.2)
-- Built with [AvaloniaUI](https://avaloniaui.net/)
-- Powered by [SkiaSharp](https://github.com/mono/SkiaSharp)
 
 ## 📄 License
 

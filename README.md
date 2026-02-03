@@ -43,6 +43,12 @@ Recommended (new API):
 - `LiquidGlassSurface` - A `ContentControl` that draws the liquid-glass pipeline behind its child and clips to `CornerRadius`.
 - `LiquidGlassInteractiveSurface` - Adds press/drag deformation + interactive highlight.
 
+## 💡 Reflection
+
+Developing this project has made me realize that **AvaloniaUI is still relatively immature when it comes to high-end visual effects.**
+
+While the framework offers impressive cross-platform capabilities, there is still a significant gap in providing a "mature and seamless" experience for low-level rendering pipelines and advanced shader integration. Achieving these effects often requires fighting with the underlying APIs rather than working with the framework itself, highlighting the ongoing tension between flexibility and out-of-the-box usability in the current ecosystem.
+
 ## 🙏 Credits
 
 - Inspired by [liquid-glass-react](https://github.com/rdev/liquid-glass-react/tree/master)

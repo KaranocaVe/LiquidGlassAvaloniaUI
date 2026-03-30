@@ -66,7 +66,7 @@ namespace LiquidGlassAvaloniaUI
 
                 bool any = false;
                 any |= _pressProgress.Step(dt);
-                any |= _position.Step(dt);
+                any |= _activePointerId is null && _position.Step(dt);
 
                 ApplyDeformation();
                 InvalidateVisual();

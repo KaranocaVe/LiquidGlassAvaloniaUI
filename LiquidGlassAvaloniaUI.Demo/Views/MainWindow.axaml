@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="using:LiquidGlassAvaloniaUI"
+        xmlns:views="using:AvaloniaApplication1.Views"
         xmlns:vm="using:AvaloniaApplication1.ViewModels"
         x:Class="AvaloniaApplication1.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -1347,5 +1348,124 @@
 			    </Grid>
 		    </local:LiquidGlassSurface>
 	    </Canvas>
+
+        <Grid Panel.ZIndex="1000"
+              Width="380"
+              Margin="16"
+              RowDefinitions="Auto,Auto"
+              RowSpacing="8"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Top">
+            <Button HorizontalAlignment="Right"
+                    MinWidth="72"
+                    Click="OnPerfToggleClick">
+                <TextBlock Text="Perf"
+                           FontSize="12"
+                           FontWeight="SemiBold" />
+            </Button>
+
+            <Border x:Name="PerfPanel"
+                    Grid.Row="1"
+                    IsVisible="False"
+                    Background="#DE11151D"
+                    BorderBrush="#40FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12">
+                <StackPanel Spacing="8">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="LiquidGlass Perf"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"
+                                   VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Padding="8,4"
+                                Click="OnPerfResetClick">
+                            <TextBlock Text="Reset"
+                                       FontSize="11" />
+                        </Button>
+                    </Grid>
+
+                    <views:PerfChart x:Name="PerfChart"
+                                     Height="116" />
+
+                    <Grid ColumnDefinitions="*,*"
+                          RowDefinitions="Auto,Auto"
+                          RowSpacing="4"
+                          ColumnSpacing="10">
+                        <StackPanel Orientation="Horizontal"
+                                    Spacing="6">
+                            <Border Width="9"
+                                    Height="9"
+                                    Background="#FF00E5FF"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center" />
+                            <TextBlock x:Name="PerfCaptureRateText"
+                                       FontSize="11"
+                                       Foreground="#E6FFFFFF" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="6">
+                            <Border Width="9"
+                                    Height="9"
+                                    Background="#FFFFC107"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center" />
+                            <TextBlock x:Name="PerfSkipRateText"
+                                       FontSize="11"
+                                       Foreground="#E6FFFFFF" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1"
+                                    Orientation="Horizontal"
+                                    Spacing="6">
+                            <Border Width="9"
+                                    Height="9"
+                                    Background="#FFFF4081"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center" />
+                            <TextBlock x:Name="PerfCopyRateText"
+                                       FontSize="11"
+                                       Foreground="#E6FFFFFF" />
+                        </StackPanel>
+                        <StackPanel Grid.Row="1"
+                                    Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="6">
+                            <Border Width="9"
+                                    Height="9"
+                                    Background="#FF69F0AE"
+                                    CornerRadius="4"
+                                    VerticalAlignment="Center" />
+                            <TextBlock x:Name="PerfFilterRateText"
+                                       FontSize="11"
+                                       Foreground="#E6FFFFFF" />
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock x:Name="PerfCaptureText"
+                               FontSize="11"
+                               Foreground="#E6FFFFFF"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="PerfSkipText"
+                               FontSize="11"
+                               Foreground="#E6FFFFFF"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="PerfCopyText"
+                               FontSize="11"
+                               Foreground="#E6FFFFFF"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="PerfFilterText"
+                               FontSize="11"
+                               Foreground="#E6FFFFFF"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="PerfDirtyText"
+                               FontSize="11"
+                               Foreground="#E6FFFFFF"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

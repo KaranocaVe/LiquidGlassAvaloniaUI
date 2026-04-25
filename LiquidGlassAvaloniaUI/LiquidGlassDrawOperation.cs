@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Platform;
@@ -70,7 +71,7 @@ namespace LiquidGlassAvaloniaUI
             switch (_pass)
             {
                 case LiquidGlassDrawPass.Lens:
-                    RenderLens(canvas);
+                    RenderLens(canvas, lease.GrContext);
                     break;
                 case LiquidGlassDrawPass.InteractiveHighlight:
                     RenderInteractiveHighlight(canvas);
@@ -117,7 +118,7 @@ namespace LiquidGlassAvaloniaUI
             }
         }
 
-        private void RenderLens(SKCanvas canvas)
+        private void RenderLens(SKCanvas canvas, GRContext? grContext)
         {
             if (s_lensEffect is null)
             {
@@ -146,7 +147,7 @@ namespace LiquidGlassAvaloniaUI
             //
             // In Avalonia we approximate the RenderEffect chain by applying an SKImageFilter pipeline to the
             // captured backdrop snapshot, then sampling the filtered image in the lens runtime shader.
-            LiquidGlassBackdropSnapshot.FilteredResult filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters);
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters, grContext);
 
             using SKShader? backdropShader = SKShader.CreateImage(
                 filtered.Image,
@@ -301,7 +302,8 @@ namespace LiquidGlassAvaloniaUI
 
         private static LiquidGlassBackdropSnapshot.FilteredResult GetOrCreateFilteredBackdrop(
             LiquidGlassBackdropSnapshot snapshot,
-            LiquidGlassDrawParameters parameters)
+            LiquidGlassDrawParameters parameters,
+            GRContext? grContext)
         {
             float brightness = (float)Clamp(parameters.Brightness, -1.0, 1.0);
             float contrast = (float)Clamp(parameters.Contrast, 0.0, 4.0);
@@ -320,7 +322,10 @@ namespace LiquidGlassAvaloniaUI
                 && blurSigmaPx <= 0.0005f;
 
             if (isIdentity)
+            {
+                LiquidGlassDiagnostics.RecordFilterIdentityHit();
                 return new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
+            }
 
             // Quantize to keep the cache size stable during slider drags.
             const float q = 1000.0f;
@@ -330,12 +335,18 @@ namespace LiquidGlassAvaloniaUI
                 (int)Math.Round(saturation * q),
                 (int)Math.Round(exposureEv * q),
                 (int)Math.Round(opacity * q),
-                (int)Math.Round(blurSigmaPx * q));
+                (int)Math.Round(blurSigmaPx * q),
+                GetRenderContextId(grContext));
 
             if (snapshot.TryGetFiltered(key, out LiquidGlassBackdropSnapshot.FilteredResult cached))
+            {
+                LiquidGlassDiagnostics.RecordFilterCacheHit();
                 return cached;
+            }
 
-            LiquidGlassBackdropSnapshot.FilteredResult filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx)
+            LiquidGlassDiagnostics.RecordFilterCacheMiss();
+
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx, grContext)
                                                                   ?? new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
 
             // Never cache the unfiltered snapshot image (it is owned/disposed separately).
@@ -352,7 +363,8 @@ namespace LiquidGlassAvaloniaUI
             float saturation,
             float exposureEv,
             float opacity,
-            float blurSigmaPx)
+            float blurSigmaPx,
+            GRContext? grContext)
         {
             SKImage source = snapshot.Image;
 
@@ -398,9 +410,12 @@ namespace LiquidGlassAvaloniaUI
                 // sampled backdrop to appear to "drift" while dragging the blur slider. Instead, render the
                 // filtered snapshot into an explicit same-size surface at (0,0) so the origin remains stable.
                 SKImageInfo info = new(source.Width, source.Height, source.ColorType, source.AlphaType, source.ColorSpace);
-                using SKSurface? surface = SKSurface.Create(info);
+                using SKSurface? surface = CreateFilterSurface(info, grContext);
                 if (surface is null)
+                {
+                    LiquidGlassDiagnostics.RecordFilterSurfaceFailure();
                     return null;
+                }
 
                 SKCanvas? canvas = surface.Canvas;
                 canvas.Clear(SKColors.Transparent);
@@ -417,6 +432,30 @@ namespace LiquidGlassAvaloniaUI
                 SKImage? filteredImage = surface.Snapshot();
                 return new LiquidGlassBackdropSnapshot.FilteredResult(filteredImage, snapshot.OriginInPixels);
             }
+        }
+
+        private static SKSurface? CreateFilterSurface(SKImageInfo info, GRContext? grContext)
+        {
+            if (grContext is not null)
+            {
+                SKSurface? gpuSurface = SKSurface.Create(grContext, false, info);
+                if (gpuSurface is not null)
+                {
+                    LiquidGlassDiagnostics.RecordFilterGpuSurface();
+                    return gpuSurface;
+                }
+            }
+
+            SKSurface? cpuSurface = SKSurface.Create(info);
+            if (cpuSurface is not null)
+                LiquidGlassDiagnostics.RecordFilterCpuSurface();
+
+            return cpuSurface;
+        }
+
+        private static int GetRenderContextId(GRContext? grContext)
+        {
+            return grContext is null ? 0 : RuntimeHelpers.GetHashCode(grContext);
         }
 
         private static float[] CreateColorControlsColorMatrix(float brightness, float contrast, float saturation)

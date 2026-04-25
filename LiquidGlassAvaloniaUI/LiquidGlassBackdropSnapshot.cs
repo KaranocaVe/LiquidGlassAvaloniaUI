@@ -9,7 +9,7 @@ namespace LiquidGlassAvaloniaUI
     {
         internal readonly struct FilteredKey : IEquatable<FilteredKey>
         {
-            public FilteredKey(int brightnessQ, int contrastQ, int saturationQ, int exposureEvQ, int opacityQ, int blurSigmaPxQ)
+            public FilteredKey(int brightnessQ, int contrastQ, int saturationQ, int exposureEvQ, int opacityQ, int blurSigmaPxQ, int renderContextId)
             {
                 BrightnessQ = brightnessQ;
                 ContrastQ = contrastQ;
@@ -17,6 +17,7 @@ namespace LiquidGlassAvaloniaUI
                 ExposureEvQ = exposureEvQ;
                 OpacityQ = opacityQ;
                 BlurSigmaPxQ = blurSigmaPxQ;
+                RenderContextId = renderContextId;
             }
 
             public int BrightnessQ { get; }
@@ -25,6 +26,7 @@ namespace LiquidGlassAvaloniaUI
             public int ExposureEvQ { get; }
             public int OpacityQ { get; }
             public int BlurSigmaPxQ { get; }
+            public int RenderContextId { get; }
 
             public bool Equals(FilteredKey other)
             {
@@ -33,7 +35,8 @@ namespace LiquidGlassAvaloniaUI
                        && SaturationQ == other.SaturationQ
                        && ExposureEvQ == other.ExposureEvQ
                        && OpacityQ == other.OpacityQ
-                       && BlurSigmaPxQ == other.BlurSigmaPxQ;
+                       && BlurSigmaPxQ == other.BlurSigmaPxQ
+                       && RenderContextId == other.RenderContextId;
             }
 
             public override bool Equals(object? obj)
@@ -51,6 +54,7 @@ namespace LiquidGlassAvaloniaUI
                     hashCode = hashCode * 397 ^ ExposureEvQ;
                     hashCode = hashCode * 397 ^ OpacityQ;
                     hashCode = hashCode * 397 ^ BlurSigmaPxQ;
+                    hashCode = hashCode * 397 ^ RenderContextId;
                     return hashCode;
                 }
             }

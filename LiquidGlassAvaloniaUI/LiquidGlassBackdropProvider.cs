@@ -31,6 +31,10 @@ namespace LiquidGlassAvaloniaUI
             public long LastCaptureTicksUtc;
             public bool HasLastClipRect;
             public Rect LastClipRect;
+            public bool ForcePublishNextCapture;
+            public bool HasSubscriberOnlyDirtyRect;
+            public Rect SubscriberOnlyDirtyRect;
+            public long SubscriberOnlyDirtyTicksUtc;
             public List<WeakReference<Control>> Subscribers { get; } = new();
 
             public RenderTargetBitmap? ScratchBitmap;
@@ -80,6 +84,29 @@ namespace LiquidGlassAvaloniaUI
 
             if (shouldCapture)
                 QueueCapture(topLevel, state);
+        }
+
+        public static void NotifySubscriberOnlyInvalidation(Control control)
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(control);
+            if (topLevel is null)
+                return;
+
+            if (!s_states.TryGetValue(topLevel, out BackdropState? state))
+                return;
+
+            if (!TryCalculateControlVisualBounds(control, topLevel, out Rect bounds))
+                return;
+
+            bounds = bounds.Inflate(4.0);
+            long nowTicks = DateTime.UtcNow.Ticks;
+            if (state.HasSubscriberOnlyDirtyRect && nowTicks - state.SubscriberOnlyDirtyTicksUtc < TimeSpan.FromMilliseconds(100).Ticks)
+                state.SubscriberOnlyDirtyRect = state.SubscriberOnlyDirtyRect.Union(bounds);
+            else
+                state.SubscriberOnlyDirtyRect = bounds;
+
+            state.HasSubscriberOnlyDirtyRect = true;
+            state.SubscriberOnlyDirtyTicksUtc = nowTicks;
         }
 
         private static void CleanupSubscribers(BackdropState state)
@@ -178,9 +205,12 @@ namespace LiquidGlassAvaloniaUI
                     && state.SnapshotPixelSize == pixelSize
                     && state.SnapshotOriginInPixels == originInPixels;
 
-                (SKImage? snapshotImage, ulong hash) = CreateSkImageWithHash(state.ScratchBitmap, isSameConfig, state.SnapshotHash);
+                bool forcePublish = state.ForcePublishNextCapture;
+                state.ForcePublishNextCapture = false;
 
-                if (isSameConfig && state.SnapshotHash == hash)
+                (SKImage? snapshotImage, ulong hash) = CreateSkImageWithHash(state.ScratchBitmap, isSameConfig && !forcePublish, state.SnapshotHash);
+
+                if (!forcePublish && isSameConfig && state.SnapshotHash == hash)
                 {
                     state.LastCaptureTicksUtc = nowTicks;
                     LiquidGlassDiagnostics.RecordCaptureSkippedByHash();
@@ -278,11 +308,26 @@ namespace LiquidGlassAvaloniaUI
                         return;
                     }
 
-                    if (!needsClipGrowthCapture && hasDirtyRect && state.HasLastClipRect && !dirtyRect.Intersects(state.LastClipRect))
+                    bool forcePublishNextCapture = false;
+                    if (!needsClipGrowthCapture && hasDirtyRect && state.HasLastClipRect)
                     {
-                        LiquidGlassDiagnostics.RecordCaptureSkippedByDirtyRect();
-                        return;
+                        if (!dirtyRect.Intersects(state.LastClipRect))
+                        {
+                            LiquidGlassDiagnostics.RecordCaptureSkippedByDirtyRect();
+                            return;
+                        }
+
+                        if (IsKnownSubscriberOnlyDirtyRect(state, dirtyRect, nowTicks))
+                        {
+                            LiquidGlassDiagnostics.RecordCaptureSkippedByDirtyRect();
+                            return;
+                        }
+
+                        forcePublishNextCapture = true;
                     }
+
+                    if (forcePublishNextCapture)
+                        state.ForcePublishNextCapture = true;
 
                     QueueCapture(topLevel, state);
                 }, DispatcherPriority.Background);
@@ -316,6 +361,28 @@ namespace LiquidGlassAvaloniaUI
                    && inner.Y >= outer.Y
                    && inner.Right <= outer.Right
                    && inner.Bottom <= outer.Bottom;
+        }
+
+        private static bool IsKnownSubscriberOnlyDirtyRect(BackdropState state, Rect dirtyRect, long nowTicks)
+        {
+            if (!state.HasSubscriberOnlyDirtyRect)
+                return false;
+
+            if (nowTicks - state.SubscriberOnlyDirtyTicksUtc > TimeSpan.FromMilliseconds(100).Ticks)
+            {
+                state.HasSubscriberOnlyDirtyRect = false;
+                state.SubscriberOnlyDirtyRect = default;
+                state.SubscriberOnlyDirtyTicksUtc = 0;
+                return false;
+            }
+
+            if (!RectContains(state.SubscriberOnlyDirtyRect, dirtyRect))
+                return false;
+
+            state.HasSubscriberOnlyDirtyRect = false;
+            state.SubscriberOnlyDirtyRect = default;
+            state.SubscriberOnlyDirtyTicksUtc = 0;
+            return true;
         }
 
         private static BackdropClip CalculateBackdropClip(TopLevel topLevel, BackdropState state, double scaling)
@@ -365,6 +432,29 @@ namespace LiquidGlassAvaloniaUI
         {
             bounds = default;
 
+            if (!TryCalculateControlVisualBounds(control, root, out Rect globalBounds))
+                return false;
+
+            // Inflate by an approximate sampling margin (blur + refraction). We scale the inflation
+            // by the visual's render transform to keep it conservative for interactive transforms.
+            double localInflate = GetBackdropInflate(control);
+            TransformedBounds? transformed = control.GetTransformedBounds();
+            if (transformed is null)
+                return false;
+
+            double scaleX = Math.Sqrt(transformed.Value.Transform.M11 * transformed.Value.Transform.M11 + transformed.Value.Transform.M21 * transformed.Value.Transform.M21);
+            double scaleY = Math.Sqrt(transformed.Value.Transform.M12 * transformed.Value.Transform.M12 + transformed.Value.Transform.M22 * transformed.Value.Transform.M22);
+            double inflateX = localInflate * Math.Max(1.0, scaleX);
+            double inflateY = localInflate * Math.Max(1.0, scaleY);
+
+            bounds = globalBounds.Inflate(new Thickness(inflateX, inflateY));
+            return true;
+        }
+
+        private static bool TryCalculateControlVisualBounds(Control control, TopLevel root, out Rect bounds)
+        {
+            bounds = default;
+
             if (!control.IsVisible || control.Bounds.Width <= 0 || control.Bounds.Height <= 0)
                 return false;
 
@@ -375,17 +465,7 @@ namespace LiquidGlassAvaloniaUI
             if (transformed is null)
                 return false;
 
-            Rect globalBounds = transformed.Value.Bounds.TransformToAABB(transformed.Value.Transform);
-
-            // Inflate by an approximate sampling margin (blur + refraction). We scale the inflation
-            // by the visual's render transform to keep it conservative for interactive transforms.
-            double localInflate = GetBackdropInflate(control);
-            double scaleX = Math.Sqrt(transformed.Value.Transform.M11 * transformed.Value.Transform.M11 + transformed.Value.Transform.M21 * transformed.Value.Transform.M21);
-            double scaleY = Math.Sqrt(transformed.Value.Transform.M12 * transformed.Value.Transform.M12 + transformed.Value.Transform.M22 * transformed.Value.Transform.M22);
-            double inflateX = localInflate * Math.Max(1.0, scaleX);
-            double inflateY = localInflate * Math.Max(1.0, scaleY);
-
-            bounds = globalBounds.Inflate(new Thickness(inflateX, inflateY));
+            bounds = transformed.Value.Bounds.TransformToAABB(transformed.Value.Transform);
             return true;
         }
 
@@ -540,6 +620,10 @@ namespace LiquidGlassAvaloniaUI
             System.Threading.Volatile.Write(ref state.Snapshot, null);
             state.HasLastClipRect = false;
             state.LastClipRect = default;
+            state.ForcePublishNextCapture = false;
+            state.HasSubscriberOnlyDirtyRect = false;
+            state.SubscriberOnlyDirtyRect = default;
+            state.SubscriberOnlyDirtyTicksUtc = 0;
         }
 
         private static void InvalidateSubscribers(BackdropState state)

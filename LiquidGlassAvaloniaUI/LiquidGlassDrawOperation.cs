@@ -132,7 +132,8 @@ namespace LiquidGlassAvaloniaUI
                 return;
             }
 
-            if (!canvas.TotalMatrix.TryInvert(out SKMatrix currentInvertedTransform))
+            SKMatrix currentTransform = canvas.TotalMatrix;
+            if (!currentTransform.TryInvert(out SKMatrix currentInvertedTransform))
                 return;
 
             SKSize size = new((float)_bounds.Width, (float)_bounds.Height);
@@ -147,7 +148,12 @@ namespace LiquidGlassAvaloniaUI
             //
             // In Avalonia we approximate the RenderEffect chain by applying an SKImageFilter pipeline to the
             // captured backdrop snapshot, then sampling the filtered image in the lens runtime shader.
-            LiquidGlassBackdropSnapshot.FilteredResult filtered = GetOrCreateFilteredBackdrop(_backdropSnapshot, _parameters, grContext);
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = GetOrCreateFilteredBackdrop(
+                _backdropSnapshot,
+                _parameters,
+                grContext,
+                currentTransform,
+                size);
 
             using SKShader? backdropShader = SKShader.CreateImage(
                 filtered.Image,
@@ -303,7 +309,9 @@ namespace LiquidGlassAvaloniaUI
         private static LiquidGlassBackdropSnapshot.FilteredResult GetOrCreateFilteredBackdrop(
             LiquidGlassBackdropSnapshot snapshot,
             LiquidGlassDrawParameters parameters,
-            GRContext? grContext)
+            GRContext? grContext,
+            SKMatrix currentTransform,
+            SKSize localSize)
         {
             float brightness = (float)Clamp(parameters.Brightness, -1.0, 1.0);
             float contrast = (float)Clamp(parameters.Contrast, 0.0, 4.0);
@@ -327,6 +335,8 @@ namespace LiquidGlassAvaloniaUI
                 return new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
             }
 
+            SKRectI cropRect = CalculateFilterCrop(snapshot, parameters, currentTransform, localSize);
+
             // Quantize to keep the cache size stable during slider drags.
             const float q = 1000.0f;
             LiquidGlassBackdropSnapshot.FilteredKey key = new(
@@ -336,6 +346,10 @@ namespace LiquidGlassAvaloniaUI
                 (int)Math.Round(exposureEv * q),
                 (int)Math.Round(opacity * q),
                 (int)Math.Round(blurSigmaPx * q),
+                cropRect.Left,
+                cropRect.Top,
+                cropRect.Width,
+                cropRect.Height,
                 GetRenderContextId(grContext));
 
             if (snapshot.TryGetFiltered(key, out LiquidGlassBackdropSnapshot.FilteredResult cached))
@@ -346,7 +360,7 @@ namespace LiquidGlassAvaloniaUI
 
             LiquidGlassDiagnostics.RecordFilterCacheMiss();
 
-            LiquidGlassBackdropSnapshot.FilteredResult filtered = CreateFilteredBackdrop(snapshot, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx, grContext)
+            LiquidGlassBackdropSnapshot.FilteredResult filtered = CreateFilteredBackdrop(snapshot, cropRect, brightness, contrast, saturation, exposureEv, opacity, blurSigmaPx, grContext)
                                                                   ?? new LiquidGlassBackdropSnapshot.FilteredResult(snapshot.Image, snapshot.OriginInPixels);
 
             // Never cache the unfiltered snapshot image (it is owned/disposed separately).
@@ -358,6 +372,7 @@ namespace LiquidGlassAvaloniaUI
 
         private static LiquidGlassBackdropSnapshot.FilteredResult? CreateFilteredBackdrop(
             LiquidGlassBackdropSnapshot snapshot,
+            SKRectI cropRect,
             float brightness,
             float contrast,
             float saturation,
@@ -367,6 +382,17 @@ namespace LiquidGlassAvaloniaUI
             GRContext? grContext)
         {
             SKImage source = snapshot.Image;
+            bool isFullCrop =
+                cropRect.Left == 0
+                && cropRect.Top == 0
+                && cropRect.Width == source.Width
+                && cropRect.Height == source.Height;
+
+            using SKImage? croppedSource = isFullCrop ? null : source.Subset(cropRect);
+            SKImage filterSource = croppedSource ?? source;
+            PixelPoint filteredOrigin = isFullCrop
+                ? snapshot.OriginInPixels
+                : new PixelPoint(snapshot.OriginInPixels.X + cropRect.Left, snapshot.OriginInPixels.Y + cropRect.Top);
 
             SKImageFilter? filter = null;
 
@@ -397,8 +423,8 @@ namespace LiquidGlassAvaloniaUI
             {
                 // Use TileMode.Clamp: Skia's default tile mode can introduce alpha falloff near image edges (kDecal),
                 // which shows up as darkened borders when the snapshot is clipped by the window bounds.
-                SKRect cropRect = new(0, 0, source.Width, source.Height);
-                filter = SKImageFilter.CreateBlur(blurSigmaPx, blurSigmaPx, SKShaderTileMode.Clamp, filter, cropRect);
+                SKRect filterCropRect = new(0, 0, filterSource.Width, filterSource.Height);
+                filter = SKImageFilter.CreateBlur(blurSigmaPx, blurSigmaPx, SKShaderTileMode.Clamp, filter, filterCropRect);
             }
 
             if (filter is null)
@@ -409,7 +435,7 @@ namespace LiquidGlassAvaloniaUI
                 // ApplyImageFilter() can return a varying offset/subset for blur radii, which can cause the
                 // sampled backdrop to appear to "drift" while dragging the blur slider. Instead, render the
                 // filtered snapshot into an explicit same-size surface at (0,0) so the origin remains stable.
-                SKImageInfo info = new(source.Width, source.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+                SKImageInfo info = new(filterSource.Width, filterSource.Height, filterSource.ColorType, filterSource.AlphaType, filterSource.ColorSpace);
                 using SKSurface? surface = CreateFilterSurface(info, grContext);
                 if (surface is null)
                 {
@@ -426,12 +452,95 @@ namespace LiquidGlassAvaloniaUI
                     BlendMode = SKBlendMode.Src
                 };
 
-                canvas.DrawImage(source, 0, 0, paint);
+                canvas.DrawImage(filterSource, 0, 0, paint);
                 canvas.Flush();
 
                 SKImage? filteredImage = surface.Snapshot();
-                return new LiquidGlassBackdropSnapshot.FilteredResult(filteredImage, snapshot.OriginInPixels);
+                return new LiquidGlassBackdropSnapshot.FilteredResult(filteredImage, filteredOrigin);
             }
+        }
+
+        private static SKRectI CalculateFilterCrop(
+            LiquidGlassBackdropSnapshot snapshot,
+            LiquidGlassDrawParameters parameters,
+            SKMatrix currentTransform,
+            SKSize localSize)
+        {
+            SKImage source = snapshot.Image;
+            SKRectI full = new(0, 0, source.Width, source.Height);
+
+            if (localSize.Width <= 0 || localSize.Height <= 0)
+                return full;
+
+            if (Math.Abs(currentTransform.Persp0) > 0.000001f
+                || Math.Abs(currentTransform.Persp1) > 0.000001f
+                || Math.Abs(currentTransform.Persp2 - 1.0f) > 0.000001f)
+            {
+                return full;
+            }
+
+            SKRect deviceBounds = MapRect(currentTransform, SKRect.Create(0, 0, localSize.Width, localSize.Height));
+            if (deviceBounds.Width <= 0 || deviceBounds.Height <= 0)
+                return full;
+
+            double margin = CalculateFilterMarginPx(parameters, localSize, snapshot.Scaling);
+
+            int left = (int)Math.Floor(deviceBounds.Left - snapshot.OriginInPixels.X - margin);
+            int top = (int)Math.Floor(deviceBounds.Top - snapshot.OriginInPixels.Y - margin);
+            int right = (int)Math.Ceiling(deviceBounds.Right - snapshot.OriginInPixels.X + margin);
+            int bottom = (int)Math.Ceiling(deviceBounds.Bottom - snapshot.OriginInPixels.Y + margin);
+
+            left = Math.Clamp(left, 0, source.Width);
+            top = Math.Clamp(top, 0, source.Height);
+            right = Math.Clamp(right, left, source.Width);
+            bottom = Math.Clamp(bottom, top, source.Height);
+
+            if (right <= left || bottom <= top)
+                return full;
+
+            return new SKRectI(left, top, right, bottom);
+        }
+
+        private static double CalculateFilterMarginPx(LiquidGlassDrawParameters parameters, SKSize localSize, double scaling)
+        {
+            double zoomValue = parameters.BackdropZoom;
+            if (zoomValue <= 0.0005 || double.IsNaN(zoomValue) || double.IsInfinity(zoomValue))
+                zoomValue = 1.0;
+
+            double zoom = Clamp(zoomValue, 0.1, 10.0);
+            Vector offset = parameters.BackdropOffset;
+            double offsetMargin = Math.Max(Math.Abs(offset.X), Math.Abs(offset.Y)) / zoom;
+
+            double zoomOutMargin = 0.0;
+            if (zoom < 1.0)
+            {
+                double halfMaxSize = Math.Max(localSize.Width, localSize.Height) * 0.5;
+                zoomOutMargin = (1.0 / zoom - 1.0) * halfMaxSize;
+            }
+
+            double refractionMargin = Math.Abs(parameters.RefractionAmount) * (parameters.ChromaticAberration ? 2.0 : 1.0);
+            double blurMargin = parameters.BlurRadius * 3.0;
+
+            return Math.Max(8.0, refractionMargin + blurMargin + offsetMargin + zoomOutMargin + 8.0) * scaling;
+        }
+
+        private static SKRect MapRect(SKMatrix matrix, SKRect rect)
+        {
+            float x0 = matrix.ScaleX * rect.Left + matrix.SkewX * rect.Top + matrix.TransX;
+            float y0 = matrix.SkewY * rect.Left + matrix.ScaleY * rect.Top + matrix.TransY;
+            float x1 = matrix.ScaleX * rect.Right + matrix.SkewX * rect.Top + matrix.TransX;
+            float y1 = matrix.SkewY * rect.Right + matrix.ScaleY * rect.Top + matrix.TransY;
+            float x2 = matrix.ScaleX * rect.Right + matrix.SkewX * rect.Bottom + matrix.TransX;
+            float y2 = matrix.SkewY * rect.Right + matrix.ScaleY * rect.Bottom + matrix.TransY;
+            float x3 = matrix.ScaleX * rect.Left + matrix.SkewX * rect.Bottom + matrix.TransX;
+            float y3 = matrix.SkewY * rect.Left + matrix.ScaleY * rect.Bottom + matrix.TransY;
+
+            float left = Math.Min(Math.Min(x0, x1), Math.Min(x2, x3));
+            float top = Math.Min(Math.Min(y0, y1), Math.Min(y2, y3));
+            float right = Math.Max(Math.Max(x0, x1), Math.Max(x2, x3));
+            float bottom = Math.Max(Math.Max(y0, y1), Math.Max(y2, y3));
+
+            return new SKRect(left, top, right, bottom);
         }
 
         private static SKSurface? CreateFilterSurface(SKImageInfo info, GRContext? grContext)

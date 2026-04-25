@@ -9,7 +9,18 @@ namespace LiquidGlassAvaloniaUI
     {
         internal readonly struct FilteredKey : IEquatable<FilteredKey>
         {
-            public FilteredKey(int brightnessQ, int contrastQ, int saturationQ, int exposureEvQ, int opacityQ, int blurSigmaPxQ, int renderContextId)
+            public FilteredKey(
+                int brightnessQ,
+                int contrastQ,
+                int saturationQ,
+                int exposureEvQ,
+                int opacityQ,
+                int blurSigmaPxQ,
+                int cropX,
+                int cropY,
+                int cropWidth,
+                int cropHeight,
+                int renderContextId)
             {
                 BrightnessQ = brightnessQ;
                 ContrastQ = contrastQ;
@@ -17,6 +28,10 @@ namespace LiquidGlassAvaloniaUI
                 ExposureEvQ = exposureEvQ;
                 OpacityQ = opacityQ;
                 BlurSigmaPxQ = blurSigmaPxQ;
+                CropX = cropX;
+                CropY = cropY;
+                CropWidth = cropWidth;
+                CropHeight = cropHeight;
                 RenderContextId = renderContextId;
             }
 
@@ -26,6 +41,10 @@ namespace LiquidGlassAvaloniaUI
             public int ExposureEvQ { get; }
             public int OpacityQ { get; }
             public int BlurSigmaPxQ { get; }
+            public int CropX { get; }
+            public int CropY { get; }
+            public int CropWidth { get; }
+            public int CropHeight { get; }
             public int RenderContextId { get; }
 
             public bool Equals(FilteredKey other)
@@ -36,6 +55,10 @@ namespace LiquidGlassAvaloniaUI
                        && ExposureEvQ == other.ExposureEvQ
                        && OpacityQ == other.OpacityQ
                        && BlurSigmaPxQ == other.BlurSigmaPxQ
+                       && CropX == other.CropX
+                       && CropY == other.CropY
+                       && CropWidth == other.CropWidth
+                       && CropHeight == other.CropHeight
                        && RenderContextId == other.RenderContextId;
             }
 
@@ -54,6 +77,10 @@ namespace LiquidGlassAvaloniaUI
                     hashCode = hashCode * 397 ^ ExposureEvQ;
                     hashCode = hashCode * 397 ^ OpacityQ;
                     hashCode = hashCode * 397 ^ BlurSigmaPxQ;
+                    hashCode = hashCode * 397 ^ CropX;
+                    hashCode = hashCode * 397 ^ CropY;
+                    hashCode = hashCode * 397 ^ CropWidth;
+                    hashCode = hashCode * 397 ^ CropHeight;
                     hashCode = hashCode * 397 ^ RenderContextId;
                     return hashCode;
                 }

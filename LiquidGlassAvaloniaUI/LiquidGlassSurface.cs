@@ -565,6 +565,9 @@ namespace LiquidGlassAvaloniaUI
         {
             base.OnPropertyChanged(change);
 
+            if (IsSubscriberOnlyRenderProperty(change.Property))
+                LiquidGlassBackdropProvider.NotifySubscriberOnlyInvalidation(this);
+
             if (change.Property == CornerRadiusProperty)
             {
                 InteractiveOverlay?.InvalidateVisual();
@@ -593,6 +596,50 @@ namespace LiquidGlassAvaloniaUI
             {
                 UpdateAdaptiveLuminanceTimer();
             }
+        }
+
+        private static bool IsSubscriberOnlyRenderProperty(AvaloniaProperty property)
+        {
+            return property == CornerRadiusProperty
+                   || property == BackdropZoomProperty
+                   || property == BackdropOffsetProperty
+                   || property == RefractionHeightProperty
+                   || property == RefractionAmountProperty
+                   || property == DepthEffectProperty
+                   || property == ChromaticAberrationProperty
+                   || property == BlurRadiusProperty
+                   || property == VibrancyProperty
+                   || property == BrightnessProperty
+                   || property == ContrastProperty
+                   || property == ExposureEvProperty
+                   || property == GammaPowerProperty
+                   || property == BackdropOpacityProperty
+                   || property == TintColorProperty
+                   || property == SurfaceColorProperty
+                   || property == ProgressiveBlurEnabledProperty
+                   || property == ProgressiveBlurStartProperty
+                   || property == ProgressiveBlurEndProperty
+                   || property == ProgressiveTintColorProperty
+                   || property == ProgressiveTintIntensityProperty
+                   || property == AdaptiveLuminanceEnabledProperty
+                   || property == AdaptiveLuminanceUpdateIntervalMsProperty
+                   || property == AdaptiveLuminanceSmoothingProperty
+                   || property == HighlightEnabledProperty
+                   || property == HighlightWidthProperty
+                   || property == HighlightBlurRadiusProperty
+                   || property == HighlightOpacityProperty
+                   || property == HighlightAngleProperty
+                   || property == HighlightFalloffProperty
+                   || property == ShadowEnabledProperty
+                   || property == ShadowRadiusProperty
+                   || property == ShadowOffsetProperty
+                   || property == ShadowColorProperty
+                   || property == ShadowOpacityProperty
+                   || property == InnerShadowEnabledProperty
+                   || property == InnerShadowRadiusProperty
+                   || property == InnerShadowOffsetProperty
+                   || property == InnerShadowColorProperty
+                   || property == InnerShadowOpacityProperty;
         }
 
         protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -672,6 +719,7 @@ namespace LiquidGlassAvaloniaUI
             if (Math.Abs(next - AdaptiveLuminance) > 0.0005)
             {
                 AdaptiveLuminance = next;
+                LiquidGlassBackdropProvider.NotifySubscriberOnlyInvalidation(this);
                 InvalidateVisual();
             }
         }

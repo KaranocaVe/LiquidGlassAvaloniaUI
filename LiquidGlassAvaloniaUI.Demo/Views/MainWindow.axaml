@@ -1350,6 +1350,7 @@
 	    </Canvas>
 
         <Grid Panel.ZIndex="1000"
+              local:LiquidGlassBackdrop.IsExcludedFromCapture="True"
               Width="380"
               Margin="16"
               RowDefinitions="Auto,Auto"

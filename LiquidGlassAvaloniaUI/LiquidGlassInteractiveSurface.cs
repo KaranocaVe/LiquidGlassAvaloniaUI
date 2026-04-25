@@ -69,7 +69,7 @@ namespace LiquidGlassAvaloniaUI
                 any |= _activePointerId is null && _position.Step(dt);
 
                 ApplyDeformation();
-                InvalidateVisual();
+                InvalidateSubscriberVisual();
                 InteractiveOverlay?.InvalidateVisual();
 
                 if (!any)
@@ -125,7 +125,7 @@ namespace LiquidGlassAvaloniaUI
 
             HookTopLevel();
             ApplyDeformation();
-            InvalidateVisual();
+            InvalidateSubscriberVisual();
             InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
@@ -138,7 +138,7 @@ namespace LiquidGlassAvaloniaUI
             Point p = e.GetPosition(this);
             _position.SnapTo(p);
             ApplyDeformation();
-            InvalidateVisual();
+            InvalidateSubscriberVisual();
             InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
@@ -168,7 +168,7 @@ namespace LiquidGlassAvaloniaUI
             _pressProgress.Target = 0.0;
             _position.Target = _startPosition;
             ApplyDeformation();
-            InvalidateVisual();
+            InvalidateSubscriberVisual();
             InteractiveOverlay?.InvalidateVisual();
             StartAnimation();
         }
@@ -205,6 +205,12 @@ namespace LiquidGlassAvaloniaUI
 
             _lastAnimationTickUtc = DateTime.UtcNow;
             _animationTimer.Start();
+        }
+
+        private void InvalidateSubscriberVisual()
+        {
+            LiquidGlassBackdropProvider.NotifySubscriberOnlyInvalidation(this);
+            InvalidateVisual();
         }
 
         private void ApplyDeformation()
@@ -273,6 +279,7 @@ namespace LiquidGlassAvaloniaUI
                 || change.Property == InteractiveHighlightEnabledProperty
                 || change.Property == InteractiveMaxScaleDipProperty)
             {
+                LiquidGlassBackdropProvider.NotifySubscriberOnlyInvalidation(this);
                 InteractiveOverlay?.InvalidateVisual();
             }
         }

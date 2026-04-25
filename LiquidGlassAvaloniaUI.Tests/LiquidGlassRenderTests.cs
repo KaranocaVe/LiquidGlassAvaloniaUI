@@ -1376,6 +1376,151 @@ public class LiquidGlassRenderTests
     }
 
     [AvaloniaFact]
+    public void Backdrop_capture_preserves_non_origin_clip_content()
+    {
+        var root = new Grid
+        {
+            Background = Brushes.DeepSkyBlue
+        };
+
+        var target = new Border
+        {
+            Width = 120,
+            Height = 120,
+            Margin = new Thickness(330, 90, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = Brushes.Red
+        };
+
+        var glass = new LiquidGlassSurface
+        {
+            Width = 120,
+            Height = 120,
+            Margin = new Thickness(330, 90, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            CornerRadius = new CornerRadius(0),
+            RefractionHeight = 0,
+            RefractionAmount = 0,
+            BlurRadius = 0,
+            Vibrancy = 1,
+            Brightness = 0,
+            Contrast = 1,
+            ExposureEv = 0,
+            GammaPower = 1,
+            BackdropOpacity = 1,
+            TintColor = Colors.Transparent,
+            SurfaceColor = Colors.Transparent,
+            HighlightEnabled = false,
+            ShadowEnabled = false,
+            InnerShadowEnabled = false
+        };
+
+        root.Children.Add(target);
+        root.Children.Add(glass);
+
+        var window = new Window
+        {
+            Width = 480,
+            Height = 320,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+            var frame = window.CaptureRenderedFrame();
+            Assert.NotNull(frame);
+
+            var c = GetPixel(frame!, 390, 150);
+            Assert.True(c.r > 180 && c.g < 100 && c.b < 100, $"Expected the offset red backdrop through glass, got {c}.");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void LiquidGlass_updates_when_small_backdrop_dirty_rect_changes()
+    {
+        var root = new Grid
+        {
+            Background = Brushes.DeepSkyBlue
+        };
+
+        var patch = new Border
+        {
+            Width = 14,
+            Height = 14,
+            Margin = new Thickness(236, 146, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = Brushes.DeepSkyBlue
+        };
+
+        var glass = new LiquidGlassSurface
+        {
+            Width = 220,
+            Height = 160,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            CornerRadius = new CornerRadius(0),
+            RefractionHeight = 0,
+            RefractionAmount = 0,
+            BlurRadius = 0,
+            Vibrancy = 1,
+            Brightness = 0,
+            Contrast = 1,
+            ExposureEv = 0,
+            GammaPower = 1,
+            BackdropOpacity = 1,
+            TintColor = Colors.Transparent,
+            SurfaceColor = Colors.Transparent,
+            HighlightEnabled = false,
+            ShadowEnabled = false,
+            InnerShadowEnabled = false
+        };
+
+        root.Children.Add(patch);
+        root.Children.Add(glass);
+
+        var window = new Window
+        {
+            Width = 480,
+            Height = 320,
+            Content = root
+        };
+
+        window.Show();
+
+        try
+        {
+            _ = window.CaptureRenderedFrame();
+            var before = window.CaptureRenderedFrame();
+            Assert.NotNull(before);
+
+            patch.Background = Brushes.Red;
+
+            Thread.Sleep(60);
+
+            _ = window.CaptureRenderedFrame();
+            var after = window.CaptureRenderedFrame();
+            Assert.NotNull(after);
+
+            var c = GetPixel(after!, 243, 153);
+            Assert.True(c.r > 180 && c.g < 100 && c.b < 100, $"Expected the small dirty backdrop patch to be recaptured, got {c}.");
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public void Backdrop_capture_excludes_glass_subtree()
     {
         var background = new Border

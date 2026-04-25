@@ -15,10 +15,11 @@ namespace LiquidGlassAvaloniaUI
             if (clipRect.Width <= 0 || clipRect.Height <= 0)
                 return;
 
+            Rect targetClip = new(clipRect.Size);
             using (context.PushTransform(Matrix.CreateTranslation(-clipRect.Position.X, -clipRect.Position.Y)))
-            using (context.PushClip(clipRect))
+            using (context.PushClip(targetClip))
             {
-                Render(context, visual, new Rect(visual.Bounds.Size), Matrix.Identity, new Rect(clipRect.Size), excludedRoots);
+                Render(context, visual, new Rect(visual.Bounds.Size), Matrix.Identity, clipRect, excludedRoots);
             }
         }
 
@@ -31,6 +32,9 @@ namespace LiquidGlassAvaloniaUI
             ISet<Visual>? excludedRoots)
         {
             if (excludedRoots is not null && excludedRoots.Contains(visual))
+                return;
+
+            if (LiquidGlassBackdrop.GetIsExcludedFromCapture(visual))
                 return;
 
             if (!visual.IsVisible || visual.Opacity <= 0)

@@ -1,16 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <LangVersion>9</LangVersion>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Avalonia" Version="11.3.10" />
-      <PackageReference Include="Avalonia.Skia" Version="11.3.10" />
-      <PackageReference Include="SkiaSharp" Version="3.119.1" />
+      <PackageReference Include="Avalonia" Version="12.0.1" />
+      <PackageReference Include="Avalonia.Skia" Version="12.0.1" />
+      <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
     </ItemGroup>
 
     <ItemGroup>

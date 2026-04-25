@@ -1,5 +1,6 @@
 ﻿using Avalonia;
-using Avalonia.ReactiveUI;
+using LiquidGlassAvaloniaUI;
+using ReactiveUI.Avalonia;
 using System;
 
 namespace AvaloniaApplication1;
@@ -18,7 +19,8 @@ sealed class Program
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
+            .UseLiquidGlassPerformanceDefaults()
             .LogToTrace()
-            .UseReactiveUI()
+            .UseReactiveUI(_ => { })
             .UseSkia();
 }

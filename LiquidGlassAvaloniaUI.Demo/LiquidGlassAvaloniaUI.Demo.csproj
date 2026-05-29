@@ -1,10 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <OutputType>WinExe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
         <Nullable>enable</Nullable>
-        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-        <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AssemblyName>LiquidGlassAvaloniaUI.Demo</AssemblyName>
         <RootNamespace>LiquidGlassAvaloniaUI</RootNamespace>
@@ -17,8 +14,6 @@
 
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Desktop" Version="12.0.1" />
-        <PackageReference Include="Avalonia.Skia" Version="12.0.1" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.1" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.1" />
         <!--Condition below is needed to remove developer diagnostics from build output in Release configuration.-->
@@ -27,7 +22,6 @@
             <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
         </PackageReference>
         <PackageReference Include="ReactiveUI.Avalonia" Version="12.0.1" />
-        <PackageReference Include="SkiaSharp" Version="3.119.3-preview.1.1" />
     </ItemGroup>
 
     <ItemGroup>

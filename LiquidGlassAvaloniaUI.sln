@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Demo.Browser", "LiquidGlassAvaloniaUI.Demo.Browser\LiquidGlassAvaloniaUI.Demo.Browser.csproj", "{5044A7E5-E12C-40ED-92E9-9CD425D7224C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LiquidGlassAvaloniaUI.Demo.Desktop", "LiquidGlassAvaloniaUI.Demo.Desktop\LiquidGlassAvaloniaUI.Demo.Desktop.csproj", "{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -66,6 +68,18 @@ Global
 		{5044A7E5-E12C-40ED-92E9-9CD425D7224C}.Release|x64.Build.0 = Release|Any CPU
 		{5044A7E5-E12C-40ED-92E9-9CD425D7224C}.Release|x86.ActiveCfg = Release|Any CPU
 		{5044A7E5-E12C-40ED-92E9-9CD425D7224C}.Release|x86.Build.0 = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|x64.Build.0 = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Debug|x86.Build.0 = Debug|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|x64.ActiveCfg = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|x64.Build.0 = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|x86.ActiveCfg = Release|Any CPU
+		{989A5F73-6FC1-4B23-89BD-B69DD813FBDA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

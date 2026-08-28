@@ -1,5 +1,7 @@
 # LiquidGlassAvaloniaUI
 
+[![CI](https://github.com/KaranocaVe/LiquidGlassAvaloniaUI/actions/workflows/ci.yml/badge.svg)](https://github.com/KaranocaVe/LiquidGlassAvaloniaUI/actions/workflows/ci.yml)
+
 An AvaloniaUI “liquid glass” backdrop effect: vibrancy → blur → rounded-rect lens refraction (optional dispersion) → edge highlight.
 
 ## 🎯 Overview
@@ -26,7 +28,13 @@ More headless-rendered examples:
 
 1. Clone the repository
 2. Open the solution in your IDE
-3. Run the `LiquidGlassAvaloniaUI.Demo` project to see the effects in action
+3. Run the `LiquidGlassAvaloniaUI.Demo.Desktop` project to see the effects in action
+
+From the command line:
+
+```sh
+dotnet run --project LiquidGlassAvaloniaUI.Demo.Desktop/LiquidGlassAvaloniaUI.Demo.Desktop.csproj
+```
 
 The demo includes a floating draggable glass card for quick testing.
 
@@ -35,6 +43,13 @@ To validate rendering headlessly and optionally emit PNGs:
 - `dotnet test LiquidGlassAvaloniaUI.sln -c Release`
 - (optional) `LIQUIDGLASS_TEST_OUTPUT_DIR=./artifacts` to write `with-glass.png` / `without-glass.png`
 - (optional) `LIQUIDGLASS_README_SCREENSHOTS_DIR=./docs/screenshots dotnet test LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj -c Release --filter FullyQualifiedName~ReadmeScreenshotGenerator` to (re)generate the screenshots above
+
+## GitHub automation
+
+- Pull requests and `main` pushes run the headless tests, desktop build, and Browser WASM publish.
+- A green `main` push deploys the Browser Demo to Cloudflare Pages.
+- Conventional Commits are collected by release-please into a Release PR. Merging it publishes the NuGet package, Browser Demo, and self-contained `win-x64`, `linux-x64`, and `osx-arm64` desktop archives.
+- Configure the repository Secret `CLOUDFLARE_API_TOKEN` with Pages edit access and the repository Variable `CLOUDFLARE_ACCOUNT_ID` before enabling Pages deployment.
 
 ## 📖 Usage
 

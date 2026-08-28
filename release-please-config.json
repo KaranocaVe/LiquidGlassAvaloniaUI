@@ -1,0 +1,11 @@
+{
+  "release-type": "simple",
+  "packages": {
+    ".": {
+      "component": "LiquidGlassAvaloniaUI",
+      "package-name": "LiquidGlassAvaloniaUI",
+      "release-type": "simple",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

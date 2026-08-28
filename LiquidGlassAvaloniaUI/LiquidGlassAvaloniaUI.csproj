@@ -1,10 +1,17 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <LangVersion>9</LangVersion>
-        <Nullable>enable</Nullable>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <TargetFramework>net8.0</TargetFramework>
+      <LangVersion>9</LangVersion>
+      <Nullable>enable</Nullable>
+      <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+      <PackageId>LiquidGlassAvaloniaUI</PackageId>
+      <Authors>KaranocaVe</Authors>
+      <Description>AvaloniaUI liquid-glass backdrop and lens effects powered by Skia.</Description>
+      <PackageLicenseExpression>MIT</PackageLicenseExpression>
+      <PackageReadmeFile>README.md</PackageReadmeFile>
+      <RepositoryUrl>https://github.com/KaranocaVe/LiquidGlassAvaloniaUI</RepositoryUrl>
+      <RepositoryType>git</RepositoryType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="..\README.md" Pack="true" PackagePath="\" />
       <None Remove="Assets\Shaders\LiquidGlassShader.sksl" />
       <AvaloniaResource Include="Assets\Shaders\LiquidGlassShader.sksl" />
       <None Remove="Assets\Shaders\LiquidGlassHighlight.sksl" />

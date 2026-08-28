@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore test and desktop projects
+        run: |
+          dotnet restore LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj
+          dotnet restore LiquidGlassAvaloniaUI.Demo.Desktop/LiquidGlassAvaloniaUI.Demo.Desktop.csproj
+      - name: Run tests
+        run: dotnet test LiquidGlassAvaloniaUI.Tests/LiquidGlassAvaloniaUI.Tests.csproj -c Release --no-restore
+      - name: Build desktop demo
+        run: dotnet build LiquidGlassAvaloniaUI.Demo.Desktop/LiquidGlassAvaloniaUI.Demo.Desktop.csproj -c Release --no-restore
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install WebAssembly workload
+        run: dotnet workload restore LiquidGlassAvaloniaUI.Demo.Browser/LiquidGlassAvaloniaUI.Demo.Browser.csproj
+      - name: Publish browser demo
+        run: dotnet publish LiquidGlassAvaloniaUI.Demo.Browser/LiquidGlassAvaloniaUI.Demo.Browser.csproj -c Release
+      - name: Store browser site
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-site
+          path: LiquidGlassAvaloniaUI.Demo.Browser/bin/Release/net10.0-browser/publish/wwwroot
+          if-no-files-found: error
+
+  deploy-pages:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, browser]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: cloudflare-pages-production
+      cancel-in-progress: false
+    steps:
+      - name: Download browser site
+        uses: actions/download-artifact@v4
+        with:
+          name: browser-site
+          path: site
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.123.0 pages deploy site --project-name liquidglass-avalonia-ui-demo --account-id "$CLOUDFLARE_ACCOUNT_ID"

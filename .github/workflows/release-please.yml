@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Create or update release PR
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  nuget:
+    if: needs.release.outputs.release_created == 'true'
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore library
+        run: dotnet restore LiquidGlassAvaloniaUI/LiquidGlassAvaloniaUI.csproj
+      - name: Pack NuGet package
+        run: >-
+          dotnet pack LiquidGlassAvaloniaUI/LiquidGlassAvaloniaUI.csproj
+          -c Release --no-restore
+          -p:PackageVersion=${{ needs.release.outputs.version }}
+          -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg
+          -o "$RUNNER_TEMP/nuget"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget
+          path: ${{ runner.temp }}/nuget/*
+          if-no-files-found: error
+
+  browser:
+    if: needs.release.outputs.release_created == 'true'
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install WebAssembly workload
+        run: dotnet workload restore LiquidGlassAvaloniaUI.Demo.Browser/LiquidGlassAvaloniaUI.Demo.Browser.csproj
+      - name: Publish browser demo
+        run: dotnet publish LiquidGlassAvaloniaUI.Demo.Browser/LiquidGlassAvaloniaUI.Demo.Browser.csproj -c Release
+      - name: Archive browser demo
+        run: |
+          cd LiquidGlassAvaloniaUI.Demo.Browser/bin/Release/net10.0-browser/publish/wwwroot
+          zip -rq "$RUNNER_TEMP/LiquidGlassAvaloniaUI.Demo.Browser-${{ needs.release.outputs.version }}.zip" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser
+          path: ${{ runner.temp }}/LiquidGlassAvaloniaUI.Demo.Browser-*.zip
+          if-no-files-found: error
+
+  desktop:
+    if: needs.release.outputs.release_created == 'true'
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+            extension: zip
+          - rid: linux-x64
+            os: ubuntu-latest
+            extension: tar.gz
+          - rid: osx-arm64
+            os: macos-14
+            extension: tar.gz
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore desktop demo
+        run: dotnet restore LiquidGlassAvaloniaUI.Demo.Desktop/LiquidGlassAvaloniaUI.Demo.Desktop.csproj -r ${{ matrix.rid }}
+      - name: Publish desktop demo
+        run: >-
+          dotnet publish LiquidGlassAvaloniaUI.Demo.Desktop/LiquidGlassAvaloniaUI.Demo.Desktop.csproj
+          -c Release -r ${{ matrix.rid }} --self-contained true --no-restore
+          -p:PublishSingleFile=true -p:DebugType=None -o "${{ runner.temp }}/publish"
+      - name: Archive Windows demo
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path "${{ runner.temp }}/publish/*" -DestinationPath "${{ runner.temp }}/LiquidGlassAvaloniaUI.Demo.Desktop-${{ matrix.rid }}-${{ needs.release.outputs.version }}.zip"
+      - name: Archive Unix demo
+        if: runner.os != 'Windows'
+        run: tar -C "$RUNNER_TEMP/publish" -czf "$RUNNER_TEMP/LiquidGlassAvaloniaUI.Demo.Desktop-${{ matrix.rid }}-${{ needs.release.outputs.version }}.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.rid }}
+          path: ${{ runner.temp }}/LiquidGlassAvaloniaUI.Demo.Desktop-${{ matrix.rid }}-${{ needs.release.outputs.version }}.${{ matrix.extension }}
+          if-no-files-found: error
+
+  upload:
+    if: needs.release.outputs.release_created == 'true'
+    needs: [release, nuget, browser, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Create checksums
+        run: |
+          cd assets
+          sha256sum * > SHA256SUMS.txt
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ needs.release.outputs.tag_name }}" assets/* --clobber

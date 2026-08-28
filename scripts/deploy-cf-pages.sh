@@ -34,7 +34,4 @@ PUBLISH_DIR="${ROOT_DIR}/LiquidGlassAvaloniaUI.Demo.Browser/bin/Release/net10.0-
 
 "${DOTNET_BIN}" publish "${ROOT_DIR}/LiquidGlassAvaloniaUI.Demo.Browser/LiquidGlassAvaloniaUI.Demo.Browser.csproj" -c Release
 WRANGLER_ARGS=(pages deploy "${PUBLISH_DIR}" --project-name "${PROJECT_NAME}")
-if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
-  WRANGLER_ARGS+=(--account-id "${CLOUDFLARE_ACCOUNT_ID}")
-fi
 npx --yes "wrangler@${WRANGLER_VERSION}" "${WRANGLER_ARGS[@]}"

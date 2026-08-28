@@ -49,7 +49,7 @@ To validate rendering headlessly and optionally emit PNGs:
 - Pull requests and `main` pushes run the headless tests, desktop build, and Browser WASM publish.
 - A green `main` push deploys the Browser Demo to Cloudflare Pages.
 - Conventional Commits are collected by release-please into a Release PR. Merging it publishes the NuGet package, Browser Demo, and self-contained `win-x64`, `linux-x64`, and `osx-arm64` desktop archives.
-- Configure the repository Secret `CLOUDFLARE_API_TOKEN` with Pages edit access and the repository Variable `CLOUDFLARE_ACCOUNT_ID` before enabling Pages deployment.
+- Configure the repository Secret `CLOUDFLARE_API_TOKEN` with Pages edit access before enabling Pages deployment.
 
 ## 📖 Usage
 

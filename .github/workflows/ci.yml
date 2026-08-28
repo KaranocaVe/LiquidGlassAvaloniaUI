@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# NuGet's online revocation endpoint currently rejects the signed ReactiveUI
+# dependency chain on hosted runners; package signatures remain validated.
+env:
+  NUGET_CERT_REVOCATION_MODE: offline
+
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

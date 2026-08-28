@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
 
+# Keep signature validation while avoiding the hosted-runner revocation-chain
+# failure affecting the pinned ReactiveUI dependencies.
+env:
+  NUGET_CERT_REVOCATION_MODE: offline
+
 permissions:
   contents: write
   pull-requests: write

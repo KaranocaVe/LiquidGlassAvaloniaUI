@@ -143,4 +143,4 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ needs.release.outputs.tag_name }}" assets/* --clobber
+        run: gh release upload "${{ needs.release.outputs.tag_name }}" assets/* --clobber --repo "$GITHUB_REPOSITORY"
